@@ -1,0 +1,2261 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#127686">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="配達データ分析">
+<title>配達データ分析</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23127686'/%3E%3Ctext x='50' y='68' font-size='56' text-anchor='middle'%3E📦%3C/text%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#f2f6f7;--panel:#fff;--fg:#14262b;--muted:#5f7276;--line:#dce5e7;--soft:#e4f1f3;
+  --accent:#127686;--accent-fg:#fff;--g:#1f9d4a;--r:#d63b3b;--or:#e07b00;--y:#b58a00;
+  --font:"Hiragino Sans","Noto Sans JP","Yu Gothic UI",system-ui,sans-serif;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0c1517;--panel:#152225;--fg:#e4eef0;--muted:#97abaf;--line:#27393d;--soft:#163a40;
+  --accent:#3fb6c7;--accent-fg:#05262b;--g:#46c46d;--r:#f06b6b;--or:#f0a040;--y:#e0c040;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0c1517;--panel:#152225;--fg:#e4eef0;--muted:#97abaf;--line:#27393d;--soft:#163a40;--accent:#3fb6c7;--accent-fg:#05262b;--g:#46c46d;--r:#f06b6b;--or:#f0a040;--y:#e0c040;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:16px;line-height:1.55;-webkit-text-size-adjust:100%}
+body.lock{overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--accent)}
+h1,h2,h3{margin:0;line-height:1.3;text-wrap:balance}
+h3{font-size:1rem;margin:22px 0 8px}
+p{margin:6px 0}
+ul,ol{margin:6px 0;padding-left:1.3em}
+hr{border:0;border-top:1px solid var(--line);margin:12px 0}
+.wrap{max-width:860px;margin:0 auto;padding:12px 16px 110px;display:grid;gap:12px}
+.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top)}
+.top-in{max-width:860px;margin:0 auto;display:flex;align-items:center;gap:8px;padding:8px 12px}
+.top h1{font-size:1.1rem;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand{font-size:.72rem;font-weight:800;color:var(--accent);white-space:nowrap}
+.iconbtn{border:0;background:var(--soft);width:40px;height:40px;border-radius:12px;font-size:1.2rem;cursor:pointer;flex:none}
+.pill{font-size:.72rem;padding:3px 9px;border-radius:99px;white-space:nowrap;background:var(--soft);color:var(--muted)}
+.pill.ok{color:var(--g)}.pill.busy{color:var(--accent)}.pill.warn{color:var(--or);background:color-mix(in srgb,var(--or) 14%,transparent)}
+.banner{background:color-mix(in srgb,var(--or) 16%,var(--panel));color:var(--fg);font-size:.82rem;text-align:center;padding:6px 16px}
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:20;display:grid;grid-template-columns:repeat(5,1fr);background:var(--panel);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+.tabbar button{border:0;background:none;padding:6px 2px 8px;font-size:.66rem;display:flex;flex-direction:column;align-items:center;gap:1px;color:var(--muted);cursor:pointer;min-height:54px}
+.tabbar button span{font-size:1.25rem;filter:grayscale(.6);opacity:.75}
+.tabbar button.on{color:var(--accent);font-weight:800}.tabbar button.on span{filter:none;opacity:1}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px 16px;display:grid;gap:8px;min-width:0}
+.ct{display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:800;font-size:.95rem}
+.muted{color:var(--muted)}.small{font-size:.84rem}.b{font-weight:800}
+.g{color:var(--g)}.r{color:var(--r)}.or{color:var(--or)}.teal{color:var(--accent);font-weight:700}.big{font-size:1.15rem}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:10px 14px;min-height:46px;font-weight:700;cursor:pointer;text-align:center}
+.btn.primary{background:var(--accent);color:var(--accent-fg);border-color:transparent}
+.btn.ghost{background:transparent;border-style:dashed}
+.btn.danger{color:var(--r);border-color:color-mix(in srgb,var(--r) 40%,var(--line))}
+.btn.big{min-height:54px;font-size:1.05rem}
+.btn:disabled{opacity:.55}
+.btn:focus-visible,.iconbtn:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid color-mix(in srgb,var(--accent) 60%,transparent);outline-offset:2px}
+.filebtn{position:relative;overflow:hidden}
+.link{border:0;background:none;color:var(--accent);font-weight:700;cursor:pointer;padding:6px 4px;white-space:nowrap}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.row3{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:8px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.span2{grid-column:1/-1}
+label{display:grid;gap:4px;font-size:.84rem;color:var(--muted);font-weight:600}
+input,select,textarea{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:10px 12px;min-height:46px;font-size:16px;color:var(--fg)}
+textarea{min-height:0;resize:vertical}
+fieldset{border:1px solid var(--line);border-radius:12px;padding:8px 10px}legend{font-size:.84rem;color:var(--muted)}
+.check-l{display:flex;align-items:center;gap:8px;color:var(--fg)}.check-l input{width:22px;min-height:22px;height:22px}
+.seg{display:flex;background:var(--soft);border-radius:12px;padding:3px;gap:3px}
+.seg button{flex:1;border:0;background:none;border-radius:10px;padding:8px 4px;font-weight:700;color:var(--muted);cursor:pointer;min-height:40px}
+.seg button.on{background:var(--panel);color:var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.badge{display:inline-block;font-size:.75rem;font-weight:800;padding:2px 8px;border-radius:8px;background:var(--soft);color:var(--accent)}
+.m-relaxed{background:color-mix(in srgb,var(--g) 16%,transparent);color:var(--g)}.m-caution{background:color-mix(in srgb,var(--y) 18%,transparent);color:var(--y)}.m-tight{background:color-mix(in srgb,var(--r) 16%,transparent);color:var(--r)}
+.eta-time{font-size:clamp(3.4rem,15vw,5rem);font-weight:900;letter-spacing:-2px;line-height:1;font-variant-numeric:tabular-nums}
+.minis{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
+.mini span{display:block;font-size:.72rem;color:var(--muted)}.mini b{font-size:1.05rem;font-variant-numeric:tabular-nums}
+.trouble-big{border:0;width:100%;min-height:56px;border-radius:16px;background:linear-gradient(180deg,#ff8a3d,#e8660f);color:#fff;font-weight:900;font-size:1.05rem;cursor:pointer;box-shadow:0 4px 14px rgba(232,102,15,.25)}
+.alert{border-radius:12px;padding:9px 12px;font-size:.9rem;border-left:5px solid}
+.alert.red{background:color-mix(in srgb,var(--r) 10%,var(--panel));border-color:var(--r)}.alert.yellow{background:color-mix(in srgb,var(--y) 12%,var(--panel));border-color:var(--y)}.alert.blue{background:var(--soft);border-color:var(--accent)}
+.pm-bar{position:relative;height:16px;border-radius:8px;background:var(--soft);overflow:visible}.pm-bar i{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:8px}.pm-bar em{position:absolute;top:-4px;bottom:-4px;width:3px;background:var(--fg);border-radius:2px}
+.pm-row{display:flex;justify-content:space-between;gap:8px;font-size:.9rem;margin-top:6px;flex-wrap:wrap}
+.chips{display:flex;flex-wrap:wrap;gap:6px}.chip{border:1px solid var(--line);background:var(--panel);border-radius:99px;padding:7px 12px;min-height:38px;font-weight:700;font-size:.86rem;cursor:pointer;display:inline-flex;align-items:center;gap:4px;color:var(--fg)}
+.chip input{width:auto;min-height:0}
+.quick{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.quick button{border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:8px 2px;display:flex;flex-direction:column;align-items:center;font-size:1.3rem;cursor:pointer;min-height:64px}
+.quick span{font-size:.68rem;font-weight:700;color:var(--muted)}
+.li{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line);font-size:.92rem;min-width:0}
+.li:first-of-type{border-top:0}.grow{flex:1;min-width:0}
+.noterow{flex-wrap:wrap}.noterow .grow{flex-basis:50%}.li b{white-space:nowrap}.li.done{opacity:.5}.li.done b{text-decoration:line-through}
+.check{width:30px;height:30px;flex:none;border-radius:9px;border:2px solid var(--line);background:var(--panel);color:var(--g);font-weight:900;cursor:pointer}
+.x{border:0;background:none;color:var(--muted);font-size:1.1rem;cursor:pointer;width:32px;height:32px;flex:none}
+.dot{width:16px;height:16px;border-radius:50%;flex:none;border:1px solid rgba(0,0,0,.15)}.dot.ov{width:auto;height:auto;border-radius:6px;font-size:.66rem;padding:1px 4px;font-style:normal;background:var(--or);color:#fff}
+.tag{display:inline-block;font-size:.72rem;font-weight:800;padding:2px 7px;border-radius:7px;background:var(--soft);color:var(--accent);white-space:nowrap}
+.t-0,.t-1{background:color-mix(in srgb,var(--r) 14%,transparent);color:var(--r)}.t-2{background:color-mix(in srgb,var(--or) 16%,transparent);color:var(--or)}.t-3{background:color-mix(in srgb,#9b59d0 16%,transparent);color:#9b59d0}
+.row-btn{display:flex;align-items:center;gap:10px;width:100%;border:0;border-top:1px solid var(--line);background:none;padding:10px 2px;text-align:left;cursor:pointer;font-size:.92rem;min-height:48px}
+.card .row-btn:first-of-type{border-top:0}
+.row-btn.hero{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px}
+.chev{color:var(--muted);font-size:1.3rem;margin-left:auto}
+.links{display:grid;grid-template-columns:1fr 1fr;gap:8px}.links button{border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:10px;font-weight:700;min-height:48px;cursor:pointer;text-align:left}
+.search{border-radius:14px}
+.table{display:grid;font-size:.86rem;overflow-x:auto}.tr{display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:6px;padding:6px 0;border-top:1px solid var(--line);align-items:center}
+.tr.th{font-weight:800;color:var(--muted);border-top:0}.table.st .tr{grid-template-columns:.9fr 2fr auto}
+.code{color:#fff;border-radius:7px;padding:2px 8px;font-size:.78rem}
+.tpl{white-space:pre-wrap;background:var(--soft);border-radius:12px;padding:10px;font-family:inherit;font-size:.88rem;margin:0}
+.tile{display:inline-flex;align-items:center;justify-content:center;border-radius:24%;color:#fff;flex:none;line-height:1}
+.tile.sm{width:40px;height:40px;font-size:1.3rem;border-radius:12px}
+.topic-head{display:flex;align-items:center;gap:12px}.topic-head h2{font-size:1.3rem}
+.flow{display:flex;align-items:flex-start;gap:4px;overflow-x:auto;padding-bottom:4px}
+.flow-i{display:flex;flex-direction:column;align-items:center;gap:6px;width:86px;flex:none;text-align:center;font-size:.7rem}
+.arrow{color:var(--muted);padding-top:18px;font-weight:800}
+.step{display:flex;gap:10px;align-items:flex-start;position:relative;padding:4px 0}.step p{margin:0;flex:1}
+.snum{position:absolute;left:-6px;top:-2px;width:20px;height:20px;border-radius:50%;background:#000c;color:#fff;font-size:.7rem;font-weight:800;display:flex;align-items:center;justify-content:center;z-index:1}
+.imgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}.imgs figure{margin:0;position:relative}.imgs img{width:100%;border-radius:10px;aspect-ratio:3/4;object-fit:cover;cursor:zoom-in;border:1px solid var(--line)}
+.imgs .x{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.55);color:#fff;border-radius:50%}
+img.full{width:100%;border-radius:12px}
+.stars{color:#f0b400;letter-spacing:1px;white-space:nowrap}
+.starpick{display:flex;flex-direction:row-reverse}.starpick input{display:none}.starpick span{font-size:1.6rem;color:var(--line);cursor:pointer;padding:0 2px}
+.starpick label:has(input:checked) span,.starpick label:has(input:checked)~label span{color:#f0b400}
+.score{display:grid;grid-template-columns:1fr 1.2fr auto;gap:8px;align-items:center;font-size:.86rem}.bar{height:10px;border-radius:5px;background:var(--soft)}.bar i{display:block;height:100%;border-radius:5px;background:var(--accent)}
+.lv{display:flex;gap:6px}.lv i{flex:1;height:10px;border-radius:5px;background:var(--soft)}.lv i.on{background:var(--accent)}
+.badges{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.bdg{border:1px solid var(--line);border-radius:14px;padding:10px;display:grid;gap:2px;opacity:.45;filter:grayscale(1)}.bdg.on{opacity:1;filter:none;background:var(--soft)}.bdg span{font-size:1.6rem}.bdg small{color:var(--muted);font-size:.72rem}
+.chart{width:100%;height:auto;display:block}.chart .grid{stroke:var(--line)}.chart .tick{fill:var(--muted);font-size:10px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:.78rem;color:var(--muted)}.legend i{display:inline-block;width:14px;height:8px;border-radius:3px;margin-right:4px;vertical-align:middle}
+.chat{display:grid;gap:8px}.bubble{max-width:86%;background:var(--panel);border:1px solid var(--line);border-radius:16px 16px 16px 4px;padding:10px 12px;font-size:.92rem}.bubble.me{justify-self:end;background:var(--accent);color:var(--accent-fg);border-color:transparent;border-radius:16px 16px 4px 16px}
+.askbar{display:flex;gap:8px;position:sticky;bottom:70px}.askbar input{flex:1}
+.tgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.tgrid button{border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:12px 8px;font-weight:800;min-height:58px;cursor:pointer}
+.bigmode{text-align:center;padding:20px 0}.bigmode b{font-size:clamp(4rem,22vw,7rem);font-weight:900;display:block;line-height:1}
+.note{background:color-mix(in srgb,var(--y) 14%,var(--panel));border-radius:12px;padding:8px 12px;font-size:.86rem;color:var(--fg)}
+.err{color:var(--r);font-weight:700;font-size:.9rem}
+details summary{cursor:pointer;color:var(--accent);font-weight:700;font-size:.88rem;padding:4px 0}
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:40}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;background:var(--panel);border-radius:22px 22px 0 0;max-height:88vh;display:flex;flex-direction:column;max-width:720px;margin:0 auto;box-shadow:0 -10px 40px rgba(0,0,0,.2)}
+.sheet.full{max-height:96vh;height:96vh}
+.sheet-h{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);font-size:1.05rem}
+.sheet-b{overflow-y:auto;padding:14px 16px calc(24px + env(safe-area-inset-bottom));display:grid;gap:10px;-webkit-overflow-scrolling:touch}
+.sheet-b form{display:grid;gap:10px}
+.dlg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:71;background:var(--panel);border-radius:20px;padding:18px;width:min(92vw,380px);display:grid;gap:12px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.toast{position:fixed;left:50%;bottom:84px;transform:translate(-50%,20px);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:14px;font-size:.9rem;font-weight:700;opacity:0;pointer-events:none;transition:.25s;z-index:60;max-width:calc(100% - 32px);text-align:center}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.center{display:grid;place-items:center;text-align:center;padding:40px 16px;gap:8px}
+.spinner{width:36px;height:36px;border-radius:50%;border:4px solid var(--soft);border-top-color:var(--accent);animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+.auth{min-height:100vh;display:grid;place-items:center;padding:24px 16px;background:radial-gradient(120% 80% at 20% 0%,color-mix(in srgb,var(--accent) 22%,var(--bg)),var(--bg))}
+.auth-card{width:100%;max-width:420px;background:var(--panel);border:1px solid var(--line);border-radius:24px;padding:24px 20px;display:grid;gap:12px;box-shadow:0 20px 50px rgba(0,0,0,.08)}
+.auth-card form{display:grid;gap:10px}.auth h1{font-size:1.5rem}.logo{font-size:2.6rem;width:64px;height:64px;border-radius:18px;background:var(--accent);display:grid;place-items:center}
+.onb{text-align:center;display:grid;gap:12px;padding:10px 0}.onb-ic{font-size:3.4rem}.dots{display:flex;justify-content:center;gap:6px}.dots i{width:8px;height:8px;border-radius:50%;background:var(--line)}.dots i.on{background:var(--accent)}
+@media (max-width:420px){.grid2{grid-template-columns:1fr}.row3{grid-template-columns:1fr 1fr}.row3 .btn:first-child{grid-column:1/-1}.quick{grid-template-columns:repeat(5,1fr)}}
+@media (min-width:900px){.tabbar{left:50%;right:auto;width:860px;transform:translateX(-50%);border:1px solid var(--line);border-bottom:0;border-radius:16px 16px 0 0}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app"><div class="center"><div class="spinner"></div><p>読み込み中…</p></div></div>
+<noscript><p style="padding:20px">このページを使うには JavaScript を有効にしてください。</p></noscript>
+<script>
+"use strict";
+/* =========================================================
+   配達データ分析 Web版
+   ここに Supabase の「Project URL」と「anon public key」を入れます。
+   空のままだと「お試しモード（この端末だけに保存）」で動きます。
+   ========================================================= */
+const CONFIG = {
+  SUPABASE_URL: "https://bhznwbncnzlnpbieetah.supabase.co",
+  SUPABASE_ANON_KEY: "sb_publishable_yGjF4h6tzLMqOS7pblB8Eg_6suHoUZA",
+  ID_DOMAIN: "users.haitatsu-bunseki.app" // IDをログイン用のアドレスに変える時の末尾（変えない）
+};
+
+/* ---------------- 小さな道具 ---------------- */
+const $ = (sel, root = document) => root.querySelector(sel);
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : "id-" + Date.now().toString(36) + Math.random().toString(36).slice(2));
+const HOUR = 3600e3;
+const T = (d) => (d ? new Date(d).getTime() : NaN);
+const iso = (d) => new Date(d).toISOString();
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const sum = (a) => a.reduce((x, y) => x + y, 0);
+const avg = (a) => (a.length ? sum(a) / a.length : null);
+const median = (a) => {
+  if (!a.length) return null;
+  const s = [...a].sort((x, y) => x - y), n = s.length;
+  return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2;
+};
+const WD = ["日", "月", "火", "水", "木", "金", "土"];
+const Fmt = {
+  hm(d) { if (!d || isNaN(T(d))) return "--:--"; const x = new Date(d); return x.getHours() + ":" + String(x.getMinutes()).padStart(2, "0"); },
+  day(d) { const x = new Date(d); return `${x.getMonth() + 1}/${x.getDate()}(${WD[x.getDay()]})`; },
+  ymd(d) { const x = new Date(d); return `${x.getFullYear()}/${String(x.getMonth() + 1).padStart(2, "0")}/${String(x.getDate()).padStart(2, "0")}`; },
+  csv(d) { if (!d) return ""; const x = new Date(d); return `${Fmt.ymd(x)} ${String(x.getHours()).padStart(2, "0")}:${String(x.getMinutes()).padStart(2, "0")}`; },
+  dur(ms) { const m = Math.round(Math.abs(ms) / 60000), h = Math.floor(m / 60); return h > 0 ? `${h}時間${m % 60}分` : `${m}分`; },
+  num(v) { return v == null || !isFinite(v) ? "-" : (Math.round(v * 10) / 10).toFixed(1); },
+  mins(m) { const v = Math.round(m); return `${Math.floor(v / 60)}:${String(((v % 60) + 60) % 60).padStart(2, "0")}`; },
+  inputTime(d) { const x = d ? new Date(d) : new Date(); return `${String(x.getHours()).padStart(2, "0")}:${String(x.getMinutes()).padStart(2, "0")}`; },
+  inputDate(d) { const x = d ? new Date(d) : new Date(); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`; }
+};
+/** 日付（基準）＋ "HH:MM" から日時を作る */
+function atTime(base, hhmm) {
+  if (!hhmm) return null;
+  const [h, m] = hhmm.split(":").map(Number);
+  const d = new Date(base); d.setHours(h, m, 0, 0); return d;
+}
+const sameDay = (a, b) => { const x = new Date(a), y = new Date(b); return x.getFullYear() === y.getFullYear() && x.getMonth() === y.getMonth() && x.getDate() === y.getDate(); };
+const startOfDay = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+
+/* ---------------- クラウド（Supabase：ライブラリなしで直接通信） ---------------- */
+const Cloud = {
+  get enabled() { return !!(CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY); },
+  key: "hp_auth",
+  session: null,
+  idToEmail(id) {
+    const v = id.trim().toLowerCase();
+    return v.includes("@") ? v : `${v}@${CONFIG.ID_DOMAIN}`;
+  },
+  loadSession() {
+    try { this.session = JSON.parse(localStorage.getItem(this.key) || "null"); } catch { this.session = null; }
+    return this.session;
+  },
+  storeSession(s) {
+    this.session = s;
+    try { s ? localStorage.setItem(this.key, JSON.stringify(s)) : localStorage.removeItem(this.key); } catch {}
+  },
+  async call(path, opts = {}) {
+    const headers = { apikey: CONFIG.SUPABASE_ANON_KEY, "Content-Type": "application/json", ...(opts.headers || {}) };
+    if (opts.auth !== false) {
+      const tok = await this.token();
+      if (tok) headers.Authorization = "Bearer " + tok;
+    }
+    const res = await fetch(CONFIG.SUPABASE_URL.replace(/\/$/, "") + path, { method: opts.method || "GET", headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
+    const text = await res.text();
+    let json = null; try { json = text ? JSON.parse(text) : null; } catch {}
+    if (!res.ok) {
+      const msg = (json && (json.msg || json.error_description || json.message || json.error)) || res.statusText || "通信エラー";
+      const e = new Error(msg); e.status = res.status; e.code = json && (json.error_code || json.code); throw e;
+    }
+    return json;
+  },
+  withExpiry(j) { return { access_token: j.access_token, refresh_token: j.refresh_token, expires_at: Date.now() + (j.expires_in || 3600) * 1000, user: j.user }; },
+  async token() {
+    const s = this.session;
+    if (!s) return null;
+    if (Date.now() < s.expires_at - 60e3) return s.access_token;
+    try {
+      const j = await this.call("/auth/v1/token?grant_type=refresh_token", { method: "POST", auth: false, body: { refresh_token: s.refresh_token } });
+      this.storeSession(this.withExpiry(j));
+      return this.session.access_token;
+    } catch (e) {
+      if (e.status === 400 || e.status === 401) this.storeSession(null);
+      throw e;
+    }
+  },
+  async signUp(id, pw) {
+    const j = await this.call("/auth/v1/signup", { method: "POST", auth: false, body: { email: this.idToEmail(id), password: pw, data: { login_id: id } } });
+    if (!j || !j.access_token) {
+      throw new Error("登録は受け付けましたが、ログインできませんでした。Supabaseの「Confirm email」がオフになっているか確認してください。");
+    }
+    this.storeSession(this.withExpiry(j));
+    return this.session.user;
+  },
+  async signIn(id, pw) {
+    const j = await this.call("/auth/v1/token?grant_type=password", { method: "POST", auth: false, body: { email: this.idToEmail(id), password: pw } });
+    this.storeSession(this.withExpiry(j));
+    return this.session.user;
+  },
+  async signOut() {
+    try { await this.call("/auth/v1/logout", { method: "POST" }); } catch {}
+    this.storeSession(null);
+  },
+  async changePassword(pw) { await this.call("/auth/v1/user", { method: "PUT", body: { password: pw } }); },
+  async load() {
+    const rows = await this.call(`/rest/v1/app_data?select=data,updated_at&user_id=eq.${this.session.user.id}`);
+    return rows && rows[0] ? rows[0] : null;
+  },
+  async save(data) {
+    const now = new Date().toISOString();
+    await this.call("/rest/v1/app_data?on_conflict=user_id", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: { user_id: this.session.user.id, data, updated_at: now }
+    });
+    return now;
+  },
+  async deleteAccount() {
+    await this.call("/rest/v1/app_data?user_id=eq." + this.session.user.id, { method: "DELETE" });
+    await this.call("/rest/v1/rpc/delete_my_account", { method: "POST", body: {} });
+    this.storeSession(null);
+  }
+};
+
+function authErrorText(e) {
+  const m = String(e && e.message || e);
+  if (/Invalid login credentials/i.test(m)) return "IDかパスワードが違います。";
+  if (/already registered|already exists|User already/i.test(m)) return "このIDはすでに使われています。別のIDにするか、ログインしてください。";
+  if (/Password should be|weak/i.test(m)) return "パスワードが短すぎるか、簡単すぎます。8文字以上で、英字と数字を混ぜてください。";
+  if (/Email.*invalid|invalid.*email/i.test(m)) return "IDに使えない文字があります。半角の英字・数字・「-」「_」「.」だけにしてください。";
+  if (/rate|too many/i.test(m)) return "短い時間に何度も試したため、少し待ってからもう一度お試しください。";
+  if (/Failed to fetch|NetworkError|Load failed/i.test(m)) return "インターネットに接続できません。電波の良い所でもう一度お試しください。";
+  return "エラー：" + m;
+}
+
+/* ---------------- 選択肢 ---------------- */
+const STOP_TAGS = ["午前指定", "時間指定", "ラッシュ便", "エラーピン", "会社・店舗", "その他"];
+const TAG_DEADLINE = new Set(["午前指定", "時間指定", "ラッシュ便"]);
+const PLACE_KINDS = ["会社", "店舗", "エラーピン", "注意", "その他"];
+const LOSS_REASONS = ["渋滞", "荷物探し", "建物で迷った", "お客様対応", "サポート待ち", "休憩", "その他"];
+const MISS_CATS = ["時間指定", "誤配", "置き配写真", "荷物の扱い", "連絡漏れ", "持ち戻り", "その他"];
+const TROUBLE_CATS = ["配達方法が分からない", "建物に入れない", "宅配BOX関連", "置き場所がない", "お客様関連", "荷物関連", "時間指定関連", "アプリ/端末関連", "その他"];
+const TROUBLE_KEYWORDS = {
+  "配達方法が分からない": ["置き配", "ステータス", "不在", "ロッカー"],
+  "建物に入れない": ["オートロック", "UTA", "たどり着けない", "入れ", "通行止め", "規制"],
+  "宅配BOX関連": ["宅配ボックス", "宅配BOX", "ロッカー", "満杯"],
+  "置き場所がない": ["置き配", "NSL", "該当場所", "置け"],
+  "お客様関連": ["不在", "CU", "お客様", "連絡票"],
+  "荷物関連": ["余", "不足", "破損", "荷物"],
+  "時間指定関連": ["時間指定", "午前", "締め切り", "悪天候"],
+  "アプリ/端末関連": ["アプリ", "Bluetooth", "スロット", "バーコード"],
+  "その他": ["通行止め", "イベント", "規制"]
+};
+const AREA_CATS = ["建物", "道路", "駐車", "配達方法", "その他"];
+const RATING_KEYS = [["sorting", "荷物整理"], ["time", "時間管理"], ["trouble", "トラブル対応"], ["pace", "配達ペース"], ["safety", "安全意識"]];
+const BAG_COLORS = ["", "黒", "緑", "青", "黄", "紫", "赤", "白", "灰", "茶", "オレンジ", "ピンク", "グレー", "ネイビー", "ベージュ", "水色", "黄緑"];
+const COLOR_HEX = { 黒: "#222", 緑: "#2e9d4f", 青: "#2c6fe0", 黄: "#e8c21f", 紫: "#8e5bd6", 赤: "#e24a4a", 白: "#f4f4f4", 灰: "#9a9a9a", 茶: "#8b5a2b", オレンジ: "#f08c00", ピンク: "#ef6aa8", グレー: "#9a9a9a", ネイビー: "#22356b", ベージュ: "#d9c3a0", 水色: "#5bc6ea", 黄緑: "#9acd32" };
+
+/* ---------------- 初期の用語 ---------------- */
+const TERMS_VERSION = 2;
+const DEFAULT_TERMS = [
+  ["CU", "お客様が不在、または置き配できず受け取れない状態（Customer Unavailable）。", "在宅確認しても不在で、宅配ボックスもなく置き配できない時。受取人が必要な荷物の時。", "不在連絡票を書いて持ち戻る。連絡した時間・方法を記録する。"],
+  ["UTA", "配達場所にたどり着けない状態（Unable To Access）。", "オートロックの中に入れない、指定場所が見つからない時。", "電話・インターホンで確認し、だめなら「困った時」のステータス早見表に沿って選ぶ。"],
+  ["NSL", "安全に置ける場所がない状態（No Secure Location）。", "宅配ボックスが満杯、雨で荷物が濡れる、置き場所が特定できない時。", "自己判断で別の場所に置かず、ステータスを選んで持ち戻る。"],
+  ["DNR", "配達完了になっているのに、お客様が「受け取っていない」と申告したもの（Delivered Not Received）。", "置き配や受け渡しの後に、お客様から届いていないと連絡があった時。", "配達完了写真を確認し、管理者の指示に従う。置き配写真は場所が分かるように撮る。"],
+  ["DCR", "配達完了率（Delivery Completion Rate）。持ち出した荷物のうち配達完了できた割合。", "自分の成績や振り返りで見る数字。", "持ち戻りを減らすため、時間指定や不在の傾向をメモしておく。"],
+  ["TWC", "配送・業務時間の遵守に関する指標。", "決められた時間の中で配達・業務ができているかを見る時。", "間に合わなそうな時は、早めに管理者へ相談する。"],
+  ["FICO", "配送時の安全運転に関する指標として扱われるスコア。", "急ブレーキ・急発進・スピードの出しすぎ・運転中のスマホ操作などで下がることがある。", "急がず安全運転。スマホの操作は必ず停車してから。"],
+  ["RTS", "Return to Station。配達できなかった荷物をステーションへ返却すること。", "業務の最後に、持ち戻りの荷物を返す時。", "返す荷物の個数とステータスを確認してから返却する。"],
+  ["DSP", "配送業務を請け負う配送事業者。", "所属している会社や、委託元との関係の話をする時。", "分からないことは、所属している会社の管理者に確認する。"],
+  ["CX", "Cycle 1。1便目・前半の配送サイクル。", "このアプリの「C1便」にあたる。", ""],
+  ["MX", "Cycle 2。2便目・後半の配送サイクル。", "このアプリの「C2便」にあたる。", ""],
+  ["持ち戻り", "配達できなかった荷物をステーションへ持ち帰ること。", "不在・置き配できない・たどり着けないなどで配達できなかった時。", "ステータスを正しく選んでから持ち帰り、ステーションに返す（RTS）。"],
+  ["バース", "配送車両が着車して、荷物を積み込み・返却する場所。", "出発前の積み込みと、戻ってきた時の返却。", "周りの車や人に注意して、ゆっくり動く。"],
+  ["レスキュー（Rescue）", "他のドライバーの未配達の荷物を引き取って、応援で配達すること。", "他のドライバーの荷物が多く、管理者から応援を頼まれた時。", "引き取った荷物の個数・バッグを確認してから出発する。"],
+  ["アクセスコード", "建物・ゲートなどに入るために使う番号。", "オートロックやゲートのある建物に入る時。", "配達アプリに登録されたコードを使う。コードを他の人に教えない。"]
+].map(([word, meaning, when, action]) => ({ word, meaning, when, action }));
+
+/* ---------------- 初期のマニュアル ---------------- */
+const MANUALS_VERSION = 2;
+const R = (place, situation, code) => ({ place, situation, code });
+const DEFAULT_MANUALS = [
+  {
+    title: "置き配できない時のステータス", icon: "🏠",
+    summary: "置き配の場所と状況から、選ぶステータスを確認します。迷ったら、一番大きな障害をもとに選びます。",
+    steps: ["在宅確認をする（インターホン・電話）", "置き配の指定場所を確認する", "下の早見表から、状況に合うステータスを選ぶ", "複数の理由が重なる時は、一番大きな障害をもとに選ぶ"],
+    cautions: ["自己判断で別の場所に置かない"],
+    points: ["例：玄関指定でオートロックに入れず、電話にも出ない → 宅配ボックスが満杯・サイズが合わない → UTA"],
+    table: [
+      R("お客様・ご家族", "在宅確認したが不在／宅配ボックスがない／受取人が必要", "CU"),
+      R("車庫", "該当場所がない", "UTA"), R("車庫", "天候で荷物が傷む可能性がある", "NSL"),
+      R("ガスメーター", "該当場所がない", "UTA"), R("ガスメーター", "満杯で置けない", "NSL"), R("ガスメーター", "オートロックの中で、不在のためたどり着けない", "UTA"),
+      R("宅配ボックス", "該当場所がない", "UTA"), R("宅配ボックス", "満杯で置けない", "NSL"), R("宅配ボックス", "オートロックの中で、不在のためたどり着けない", "UTA"),
+      R("自転車", "該当場所がない", "UTA"), R("自転車", "天候で荷物が傷む可能性がある", "NSL"), R("自転車", "自転車が複数あり、お客様のものが分からない", "NSL"),
+      R("玄関", "オートロックの中で、不在のためたどり着けない", "UTA"), R("玄関", "天候で荷物が傷む可能性がある", "NSL"),
+      R("受付", "該当場所がない", "UTA"), R("受付", "受付の方が受け取りを断った", "NSL")
+    ]
+  },
+  {
+    title: "不在連絡票の書き方（CU・置き配不可）", icon: "📝",
+    summary: "置き配できずに持ち戻る時の、不在連絡票の記入方法です。",
+    steps: ["ステータスを記入する（例：CU）", "連絡した時間を記入する（例：12:00）", "日付を記入する（例：10/1）", "連絡方法にチェックする（電話・SMS/メールのどちらか1つ）", "部屋番号・お名前、持ち帰った理由、お届け日時、お問い合わせ番号を記入する", "宅配ボックスに入れた時は、ボックス番号と暗証番号を記入する"],
+    cautions: ["暗証番号やお問い合わせ番号は、書き間違えがないか見直す", "会社・店舗（BC）の場合は、営業時間も記録する"],
+    points: ["1回目・2回目・3回目の欄を、訪問した順に使う"]
+  },
+  {
+    title: "ロッカーのトラブル", icon: "🔐",
+    summary: "ロッカーの種類（赤外線タイプ／Bluetoothタイプ）で、操作方法とトラブル対応が変わります。",
+    steps: ["ロッカーの種類を確認する（赤外線：画面の下や横のセンサーにバーコードをかざす／Bluetooth：スマホと通信して自動で開く）", "荷物とスロットのサイズが合わない時は、スロットが開いている状態で、配達アプリの「？」→「スロットの変更」", "スロットが開かない時：Bluetoothがオンか、位置情報・通信環境を確認し、別のスロットも試す", "バーコードに反応しない時（赤外線）：汚れ・破れを確認し、かざす位置を変えて再度試す。別の荷物でも試す", "改善しない時は管理者に連絡する"],
+    cautions: ["スロットの変更は、スロットが開いている間に行う"],
+    points: ["ロッカーに入れた後は、車内に荷物が余っていないか必ず確認する", "荷物が余ったら、別の荷物を入れた可能性が高い。配達を止めて管理者へ報告し、余りはセンターに返却する（自己判断で再配達しない）"]
+  },
+  {
+    title: "荷物が余った時", icon: "📦",
+    summary: "配達が終わったのに、車内に荷物が残っている時の対応です。",
+    steps: ["配達アプリの左上のメニュー（≡）を開く", "「集荷」をタップする", "集荷できない（エラーが出る）時は「問題の紛失を確認」を開く", "荷物ラベルの番号（DA番号）を検索バーで検索し、配達完了していないか確認する", "見つかった時：もう一度配達するか、管理者の指示に従う", "見つからない時：管理者に報告し、「配達可能」のステータスに変えてもらう"],
+    cautions: ["必ずラベルの番号で検索して、配達完了の有無を確認する", "該当がない時は、必ず管理者に報告して指示を受ける"],
+    points: ["ラベルの番号は1文字ずつ正確に入力する", "検索に出てこない＝システム上の割り当てがない可能性がある", "車内に荷物を残したまま終了しない"]
+  },
+  {
+    title: "荷物が足りない時", icon: "🔍",
+    summary: "配達する荷物が見つからない時の対応です。",
+    steps: ["まず車内（荷室・座席の下・扉のすき間）を十分に探す", "ルートマップ画面の「？」をタップする", "「荷物を返却」をタップする", "「荷物の不足」を選ぶ", "該当する荷物の番号を選ぶ", "番号を確認して「完了」をタップする", "あとで見つかった時は「問題」→「紛失」→「再試行」"],
+    cautions: ["積み間違い・積み残しの可能性もあるので、他の荷物も確認する", "処理した後は、必ず管理者に報告して指示を受ける"],
+    points: ["黄色のシールが間違っている場合がある", "荷物のサイズや種類の表示が間違っている場合がある", "エリアから離れると時間がかかるので、早めに荷室を探す"]
+  },
+  {
+    title: "誤配に気づいた時", icon: "⚠️",
+    summary: "指定と違う場所に置いたことに、連絡が来る前に気づいた時の対応です。",
+    steps: ["配達アプリの配達完了写真を確認し、指定場所と違うことを確かめる", "インターホンを鳴らして在宅確認する（在宅なら事情を説明し、正しい場所へお届けする）", "不在の時は、事情を書いたメモをポストに入れる", "管理者に、荷物の番号と誤配の内容を報告する"],
+    cautions: ["積み間違い・積み残しの可能性もあるので、他の荷物も確認する", "必ず管理者に連絡し、指示を受ける", "お客様には丁寧に対応する", "メモを入れた後も、管理者の指示に従って必要なら再訪問する"],
+    points: ["報告の例：〇〇（荷物の番号）配達完了の写真が指定場所と違っていました。インターホンを鳴らしましたが不在のため、メモをポストへ入れました。"],
+    template: "配達完了の写真が、ご指定の場所と違っておりました。\n配達完了の処理の後に気がつきましたので、ご指定の場所に配達いたしました。\nお迷惑をおかけし、申し訳ございません。"
+  },
+  {
+    title: "イベント等で通行止めの時", icon: "⛔",
+    summary: "祭り・工事・事故などで通行止めや進入禁止になり、配達先にたどり着けない時の対応です。",
+    steps: ["規制の看板や現地の様子を写真に撮る（通行止め・進入禁止など、規制の内容が分かるように）", "配達アプリの地図をスクリーンショットし、配達できない範囲が分かるように印を付ける", "時間がたっても車でも徒歩でも配達できない時：該当の荷物を「アクセスできない（UTA）」で処理して完了する", "時間がたてば配達できそうな時：該当の配達ピンを後回しにして、規制が解除されてから配達する", "時間指定がある荷物：配達アプリの「配達不可能」→「悪天候」で処理する。規制が解除されたら必ず配達する", "距離が離れていてアプリで処理できない時：該当の荷物の番号（DA番号）を管理者に報告し、処理を頼む"],
+    cautions: ["「通行止めだった」と報告するだけでなく、規制看板の写真と、範囲に印を付けた地図を必ず残す", "規制の中に無理に入らない。警備員や係の人の指示に従う", "迷った時は自己判断せず、管理者に確認する"],
+    points: ["時間がたって配達できるようになったら、後回しにしたピンから配達する", "時間指定の荷物は「配達不可能」→「悪天候」で処理し、規制解除後に必ず配達する", "アプリで処理できない時は、荷物の番号を管理者に伝えて処理してもらう", "規制の場所と時間は「注意ポイント」にも記録しておくと、次に同じエリアを担当する時に役立つ"],
+    table: [R("通行止め", "時間がたっても車・徒歩ともに配達できない", "UTA"), R("通行止め", "時間がたてば配達できる（ピンを後回し）", "後回し"), R("通行止め", "時間指定がある荷物（配達不可能→悪天候）", "悪天候")],
+    template: "お疲れさまです。〇〇（場所）でイベントのため通行止めになっており、配達できない荷物があります。\n荷物の番号：（ここに書く）\n規制の看板の写真と、配達できない範囲に印を付けた地図があります。\n対応の指示をお願いします。"
+  }
+];
+const CODE_COLOR = { CU: "#1a64e8", UTA: "#e5383b", NSL: "#f08c00", "後回し": "#20a84a", "悪天候": "#9b59d0" };
+
+/* 手順の文章から絵を選ぶ（上ほど優先） */
+const STEP_ART = [
+  [["看板", "写真", "撮"], "📷", "#1a64e8", "写真を撮る"],
+  [["地図", "スクリーンショット", "スクショ", "範囲"], "🗺️", "#20a84a", "地図に印"],
+  [["悪天候"], "🌧️", "#9b59d0", "悪天候で処理"],
+  [["後回し", "解除されてから"], "🔁", "#1aa3b8", "後回し"],
+  [["UTA", "アクセスできない", "たどり着けない"], "🚶", "#e5383b", "たどり着けない"],
+  [["管理者", "報告", "相談", "指示"], "☎️", "#f08c00", "管理者に連絡"],
+  [["連絡票", "不在票"], "📝", "#5b5bd6", "連絡票を書く"],
+  [["インターホン", "呼び出"], "🔔", "#f08c00", "インターホン"],
+  [["電話"], "📞", "#20a84a", "電話する"],
+  [["ロッカー", "宅配ボックス", "ボックス"], "🔐", "#8b5a2b", "ボックス"],
+  [["オートロック", "入れない", "暗証", "コード"], "🏢", "#7a7a7a", "建物に入れない"],
+  [["検索", "番号"], "🔍", "#1aa3b8", "番号で検索"],
+  [["持ち戻", "持ち帰", "返却", "返す"], "↩️", "#f08c00", "持ち戻り"],
+  [["余", "多い"], "📦", "#8b5a2b", "荷物が余る"],
+  [["足りない", "不足", "見つからない"], "❓", "#8b5a2b", "荷物がない"],
+  [["置き配", "置く", "置いて"], "🚪", "#8b5a2b", "置き配"],
+  [["ステータス", "選ぶ", "選んで", "処理", "完了"], "📱", "#1a64e8", "アプリで処理"],
+  [["確認", "見る", "見て"], "👀", "#1aa3b8", "確認する"],
+  [["配達", "届け"], "🚚", "#127686", "配達する"]
+];
+function stepArt(text) {
+  for (const [keys, emoji, color, caption] of STEP_ART) if (keys.some((k) => text.includes(k))) return { emoji, color, caption };
+  return { emoji: "✅", color: "#8a8a8a", caption: "手順" };
+}
+
+function newData() {
+  return {
+    version: 1,
+    settings: { defaultPkgPace: 20, priorHours: 1.5, recentWeight: 0.5, countReturnPin: false, reminderOn: false, reminderMinutes: 60, onboarded: false },
+    sessions: [], places: [], misses: [], troubles: [], areaNotes: [], areaLogs: [],
+    terms: DEFAULT_TERMS.map((t) => ({ id: uid(), ...t })),
+    manuals: DEFAULT_MANUALS.map((m) => ({ id: uid(), table: [], cautions: [], points: [], template: "", images: [], ...m })),
+    termsVersion: TERMS_VERSION, manualsVersion: MANUALS_VERSION
+  };
+}
+/** 古いデータや足りない項目を補う */
+function migrate(d) {
+  const base = newData();
+  d = d && typeof d === "object" ? d : base;
+  const tv = d.termsVersion || 0, mv = d.manualsVersion || 0;
+  for (const k of Object.keys(base)) if (d[k] == null) d[k] = base[k];
+  d.termsVersion = tv; d.manualsVersion = mv;
+  d.settings = { ...base.settings, ...d.settings };
+  for (const s of d.sessions) {
+    s.snapshots ||= []; s.bags ||= []; s.notes ||= []; s.losses ||= []; s.rating ||= {}; s.memo ||= "";
+  }
+  if ((d.termsVersion || 0) < TERMS_VERSION) {
+    for (const t of DEFAULT_TERMS) {
+      const i = d.terms.findIndex((x) => x.word === t.word);
+      if (i < 0) d.terms.push({ id: uid(), ...t });
+      else if (String(d.terms[i].meaning).startsWith("（職場での正しい意味")) d.terms[i] = { ...d.terms[i], ...t };
+    }
+    d.termsVersion = TERMS_VERSION;
+  }
+  if ((d.manualsVersion || 0) < MANUALS_VERSION) {
+    for (const m of DEFAULT_MANUALS) if (!d.manuals.some((x) => x.title === m.title)) d.manuals.push({ id: uid(), table: [], cautions: [], points: [], template: "", images: [], ...m });
+    d.manualsVersion = MANUALS_VERSION;
+  }
+  for (const m of d.manuals) { m.steps ||= []; m.cautions ||= []; m.points ||= []; m.table ||= []; m.images ||= []; m.template ||= ""; m.icon ||= "📘"; }
+  return d;
+}
+
+/* =========================================================
+   計算（アプリと同じ考え方）
+   ========================================================= */
+const A = {
+  sorted(s) { return [...(s.snapshots || [])].sort((a, b) => T(a.time) - T(b.time)); },
+  /** 終了していれば「残り0」の点を最後に足す */
+  eff(s) {
+    const a = A.sorted(s);
+    if (s.finishedAt && a.length) {
+      const l = a[a.length - 1];
+      if (l.packages > 0 && T(s.finishedAt) > T(l.time)) a.push({ time: s.finishedAt, destinations: 0, locations: 0, packages: 0, breakMinutes: 0 });
+    }
+    return a;
+  },
+  val(sn, m) { return m === "dest" ? sn.destinations : m === "loc" ? sn.locations : sn.packages; },
+  /** 区間 [a,b] に重なるロスタイム（休憩以外・分） */
+  lossIn(s, a, b) {
+    let m = 0;
+    for (const l of s.losses || []) {
+      if (l.reason === "休憩" || !l.start) continue;
+      const st = Math.max(T(l.start), T(a)), en = Math.min(T(l.end || Date.now()), T(b));
+      if (en > st) m += (en - st) / 60000;
+    }
+    return m;
+  },
+  lossMinutes(s, includeRest = false) {
+    return sum((s.losses || []).filter((l) => includeRest || l.reason !== "休憩").map((l) => Math.max(0, (T(l.end || Date.now()) - T(l.start)) / 60000)));
+  },
+  workHours(s, a, b) {
+    const h = (T(b.time) - T(a.time)) / HOUR - (b.breakMinutes || 0) / 60 - A.lossIn(s, a.time, b.time) / 60;
+    return Math.max(0, h);
+  },
+  covered(s, snaps) { let h = 0; for (let i = 1; i < snaps.length; i++) h += A.workHours(s, snaps[i - 1], snaps[i]); return h; },
+  intervals(s, snaps = A.eff(s)) {
+    const r = [];
+    for (let i = 1; i < snaps.length; i++) {
+      const a = snaps[i - 1], b = snaps[i], hours = A.workHours(s, a, b);
+      r.push({
+        i, from: a.time, to: b.time, hours, breakMinutes: b.breakMinutes || 0,
+        dPkg: a.packages - b.packages, dDest: a.destinations - b.destinations, dLoc: a.locations - b.locations,
+        myEstimate: b.myEstimate, appEstimate: b.appEstimate,
+        per(m = "pkg") { const d = m === "dest" ? this.dDest : m === "loc" ? this.dLoc : this.dPkg; return this.hours > 0.01 ? d / this.hours : 0; }
+      });
+    }
+    return r;
+  },
+  /** 作業ペース：積み込み直後の遅い区間を外し、極端な区間をならす */
+  workPace(s, snaps, m = "pkg") {
+    let ivs = A.intervals(s, snaps).filter((iv) => iv.hours >= 0.08);
+    if (!ivs.length) return null;
+    if (ivs.length >= 3) {
+      const rest = median(ivs.slice(1).map((iv) => iv.per(m)));
+      if (rest > 0 && ivs[0].per(m) < rest * 0.6) ivs = ivs.slice(1);
+    }
+    const med = median(ivs.map((iv) => iv.per(m)));
+    if (!(med > 0)) {
+      const h = sum(ivs.map((iv) => iv.hours)), d = sum(ivs.map((iv) => (m === "dest" ? iv.dDest : m === "loc" ? iv.dLoc : iv.dPkg)));
+      return h >= 0.08 && d > 0 ? d / h : null;
+    }
+    let w = 0, t = 0;
+    for (const iv of ivs) { const p = clamp(iv.per(m), med * 0.4, med * 1.8); w += p * iv.hours; t += iv.hours; }
+    return t >= 0.08 ? w / t : null;
+  },
+  sessionPace(s, m = "pkg") {
+    const snaps = A.eff(s);
+    if (A.covered(s, snaps) < 0.5) return null;
+    const p = A.workPace(s, snaps, m);
+    return p > 0 ? p : null;
+  },
+  initial(s, m = "pkg") {
+    const f = A.sorted(s)[0];
+    if (!f) return 0;
+    return m === "dest" ? f.destinations + (f.completed || 0) : A.val(f, m);
+  },
+  delivered(s) { const l = A.sorted(s).at(-1); if (!l) return 0; return s.finishedAt ? A.initial(s) : Math.max(0, A.initial(s) - l.packages); },
+  durationMin(s) { return s.finishedAt ? (T(s.finishedAt) - T(s.startTime)) / 60000 : null; },
+  nextStop(s) {
+    const l = A.sorted(s).at(-1);
+    if (!l) return 1;
+    const done = l.completed ?? Math.max(0, A.initial(s, "dest") - l.destinations);
+    return done + 1;
+  },
+  past(sessions, before, trip) {
+    const all = sessions.filter((x) => x.finishedAt && T(x.startTime) < T(before));
+    const same = all.filter((x) => x.trip === trip);
+    return same.length >= 3 ? same : all;
+  },
+  stats(list) {
+    const recent = [...list].sort((a, b) => T(b.startTime) - T(a.startTime)).slice(0, 10);
+    const p = [], d = [], hrs = [];
+    for (const s of recent) {
+      const v = A.sessionPace(s, "pkg"); if (v) p.push(v);
+      const dv = A.sessionPace(s, "dest"); if (dv) d.push(dv);
+      const du = A.durationMin(s); if (du) hrs.push(du / 60);
+    }
+    if (!p.length) return null;
+    return { pkg: median(p), dest: median(d) || 0, count: p.length, avgHours: avg(hrs) };
+  },
+  /** 過去の予測のずれ（実際の残り時間 ÷ 予測した残り時間） */
+  correction(list) {
+    const ratios = [];
+    for (const s of [...list].sort((a, b) => T(b.startTime) - T(a.startTime)).slice(0, 10)) {
+      for (const sn of s.snapshots || []) {
+        if (!sn.appEstimate || sn.packages <= 0) continue;
+        const pred = T(sn.appEstimate) - T(sn.time), act = T(s.finishedAt) - T(sn.time);
+        if (pred > 15 * 60000 && act > 0) ratios.push(act / pred);
+      }
+    }
+    if (ratios.length < 3) return null;
+    return { factor: clamp(median(ratios), 0.8, 1.3), n: ratios.length };
+  },
+  similar(list, s) {
+    const n = A.initial(s);
+    if (!n) return null;
+    const sim = list.filter((x) => { const k = A.initial(x); return k > 0 && Math.abs(k - n) / n <= 0.15 && A.durationMin(x); });
+    if (sim.length < 2) return null;
+    return { minutes: median(sim.map(A.durationMin)), count: sim.length };
+  },
+  /** 終了予定の予測 */
+  forecast(s, sessions, settings) {
+    const f = { hasData: false, isDone: false, eta: null, method: "まだデータがありません", notes: [] };
+    const snaps = A.sorted(s);
+    const last = snaps.at(-1);
+    if (!last) return f;
+    const pin = settings.countReturnPin ? 0 : 1;
+    f.hasData = true; f.lastTime = last.time;
+    f.remainingPkg = last.packages;
+    f.remainingDest = Math.max(0, last.destinations - (last.destinations > 0 ? pin : 0));
+    f.nextStop = A.nextStop(s);
+    if (s.finishedAt || (last.packages <= 0 && f.remainingDest <= 0)) {
+      f.isDone = true; f.eta = s.finishedAt || last.time; f.method = "完了"; f.pkgPace = A.sessionPace(s) || 0; return f;
+    }
+    const past = A.past(sessions, s.startTime, s.trip);
+    const hist = A.stats(past);
+    const hours = A.covered(s, snaps);
+    f.currentHours = hours;
+    const prior = hist ? hist.pkg : settings.defaultPkgPace;
+    let cur = snaps.length >= 2 ? A.workPace(s, snaps) : null;
+    if (cur && snaps.length >= 3) {
+      const ivs = A.intervals(s, snaps).filter((iv) => iv.hours >= 0.08);
+      const lastIv = ivs.at(-1);
+      if (lastIv && lastIv.per() > 0) {
+        const w = clamp(settings.recentWeight, 0, 1);
+        cur = clamp(lastIv.per(), cur * 0.5, cur * 1.6) * w + cur * (1 - w);
+      }
+    }
+    f.currentPace = cur; f.historyPace = hist ? hist.pkg : null;
+    let pace = prior, curPct = 0;
+    if (cur && hours > 0) {
+      const k = Math.max(0.1, settings.priorHours);
+      pace = (cur * hours + prior * k) / (hours + k);
+      curPct = Math.round((hours / (hours + k)) * 100);
+    }
+    f.pkgPace = pace;
+    const priorName = hist ? `過去${hist.count}回の実績` : "標準ペース";
+    f.method = !cur || curPct === 0 ? `${priorName}（今回の記録がまだ1回のため）` : curPct >= 95 ? "今回の実績ペース" : `今回${curPct}%＋${priorName}${100 - curPct}%`;
+    if (pace > 0) {
+      let remainMs = (last.packages / pace) * HOUR;
+      f.etaRaw = new Date(T(last.time) + remainMs);
+      const corr = A.correction(past);
+      if (corr && Math.abs(corr.factor - 1) >= 0.03) {
+        remainMs *= corr.factor;
+        f.correctionMin = Math.round(((corr.factor - 1) * last.packages / pace) * 60);
+        f.notes.push(`過去の予測のずれ（${corr.n}回分）から${f.correctionMin >= 0 ? "+" : ""}${f.correctionMin}分補正`);
+      }
+      f.eta = new Date(T(last.time) + remainMs);
+    }
+    const sim = A.similar(past, s);
+    if (sim) { f.etaSimilar = new Date(T(s.startTime) + sim.minutes * 60000); f.similarCount = sim.count; }
+    const dp = A.workPace(s, snaps, "dest");
+    f.destPace = dp || (hist && hist.dest) || pace * (last.packages ? last.destinations / last.packages : 0.6);
+    if (s.targetEnd) {
+      const hrs = (T(s.targetEnd) - T(last.time)) / HOUR;
+      f.requiredPace = hrs > 0 ? last.packages / hrs : Infinity;
+      const ideal = A.idealDelivered(s, Date.now());
+      f.aheadPkgs = ideal == null ? null : Math.round(A.delivered(s) - ideal);
+    }
+    return f;
+  },
+  arrival(f, n) {
+    if (!f || f.isDone || !f.lastTime || !(f.destPace > 0) || n < f.nextStop) return null;
+    return new Date(T(f.lastTime) + ((n - f.nextStop + 0.5) / f.destPace) * HOUR);
+  },
+  idealDelivered(s, at) {
+    if (!s.targetEnd) return null;
+    const total = A.initial(s), st = T(s.startTime), en = T(s.targetEnd);
+    if (en <= st) return null;
+    return total * clamp((T(at) - st) / (en - st), 0, 1);
+  },
+  margin(s, f) {
+    if (!s.targetEnd || !f.eta || f.isDone) return null;
+    const diff = (T(f.eta) - T(s.targetEnd)) / 60000;
+    if (diff <= -10) return { key: "relaxed", label: "余裕", emoji: "🟢", diff };
+    if (diff <= 10) return { key: "caution", label: "注意", emoji: "🟡", diff };
+    return { key: "tight", label: "厳しい", emoji: "🔴", diff };
+  },
+  /** 過去の便の平均的な減り方（開始からの経過時間ごとの残り割合） */
+  averageCurve(list) {
+    const pts = [];
+    for (const s of list.slice(-10)) {
+      const total = A.initial(s); if (!total) continue;
+      for (const sn of A.eff(s)) pts.push({ h: (T(sn.time) - T(s.startTime)) / HOUR, r: sn.packages / total });
+    }
+    if (pts.length < 4) return null;
+    const out = [];
+    for (let h = 0; h <= 10; h += 0.5) {
+      const near = pts.filter((p) => Math.abs(p.h - h) <= 0.5).map((p) => p.r);
+      if (near.length >= 2) out.push({ h, r: median(near) });
+    }
+    return out.length >= 3 ? out : null;
+  }
+};
+
+/* ---------------- 会社・店舗の営業状況 ---------------- */
+function placeHours(p) {
+  const parts = [];
+  if (p.open && p.close) parts.push(`${p.open}〜${p.close}`);
+  if ((p.closedDays || []).length) parts.push("定休 " + p.closedDays.map((d) => WD[d]).join("・"));
+  if (p.breakText) parts.push(p.breakText);
+  return parts.length ? parts.join(" / ") : "営業時間 未設定";
+}
+function placeStatus(p, date = new Date()) {
+  const d = new Date(date);
+  if ((p.closedDays || []).includes(d.getDay())) return { closed: true, text: "定休日" };
+  if (!p.open || !p.close) return { closed: false, text: "", unknown: true };
+  const toM = (x) => { const [h, m] = x.split(":").map(Number); return h * 60 + m; };
+  const m = d.getHours() * 60 + d.getMinutes(), o = toM(p.open), c = toM(p.close);
+  if (m < o) return { closed: true, text: `開店前（${p.open}から）` };
+  if (m >= c) return { closed: true, text: `営業終了（${p.close}まで）` };
+  if (c - m <= 30) return { closed: false, soon: true, text: `まもなく終了（${p.close}まで）` };
+  return { closed: false, text: `営業中（${p.close}まで）` };
+}
+
+/* ---------------- 注意事項 ---------------- */
+function buildAlerts(s, f, data) {
+  const out = [];
+  const now = Date.now();
+  const m = A.margin(s, f);
+  if (m && m.key === "tight") out.push({ level: "red", text: `このままだと予定（${Fmt.hm(s.targetEnd)}）より約${Math.round(m.diff)}分遅れる見込みです。早めに管理者へ相談しましょう。` });
+  else if (m && m.key === "caution") out.push({ level: "yellow", text: `予定（${Fmt.hm(s.targetEnd)}）ぎりぎりのペースです。` });
+  for (const n of s.notes || []) {
+    if (n.done) continue;
+    if (n.deadline) {
+      const left = (T(n.deadline) - now) / 60000;
+      const eta = A.arrival(f, n.stop);
+      if (left < 0) out.push({ level: "red", text: `#${n.stop} ${n.tag}の締め切り（${Fmt.hm(n.deadline)}）を過ぎています。` });
+      else if (eta && T(eta) > T(n.deadline)) out.push({ level: "red", text: `#${n.stop} ${n.tag}：到着予想 ${Fmt.hm(eta)} で締め切り ${Fmt.hm(n.deadline)} に間に合わない可能性があります。` });
+      else if (left <= 60) out.push({ level: "yellow", text: `#${n.stop} ${n.tag}の締め切りまで${Math.round(left)}分です。` });
+    }
+    if (n.placeId) {
+      const p = data.places.find((x) => x.id === n.placeId);
+      if (p) {
+        const eta = A.arrival(f, n.stop) || new Date();
+        const st = placeStatus(p, eta);
+        if (st.closed) out.push({ level: "yellow", text: `#${n.stop} ${p.name}：到着予想 ${Fmt.hm(eta)} は${st.text}です。` });
+        else if (st.soon) out.push({ level: "yellow", text: `#${n.stop} ${p.name}：${st.text}` });
+      }
+    }
+  }
+  const rep = repeatedMisses(data.misses);
+  for (const [cat, n] of rep) out.push({ level: "blue", text: `最近「${cat}」のミスが${n}回あります。手順を確認してから進みましょう。` });
+  const running = (s.losses || []).find((l) => !l.end);
+  if (running) out.push({ level: "blue", text: `ロスタイム計測中：${running.reason}（${Fmt.dur(now - T(running.start))}）` });
+  return out;
+}
+function repeatedMisses(misses, days = 14) {
+  const since = Date.now() - days * 86400e3, c = {};
+  for (const m of misses) if (T(m.date) >= since) c[m.category] = (c[m.category] || 0) + 1;
+  return Object.entries(c).filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1]);
+}
+
+/* ---------------- 連絡文・振り返り ---------------- */
+function contactTemplate(kind, s, f) {
+  const now = Fmt.hm(new Date()), trip = s.trip + "便";
+  const delivered = A.delivered(s), remaining = f.remainingPkg ?? 0;
+  if (kind === "遅延") {
+    let t = `お疲れさまです。${trip}の進捗です。\n現在${delivered}個完了、残り${remaining}個です。`;
+    if (f.eta) t += `\n終了予測が${Fmt.hm(f.eta)}となっており`;
+    const m = A.margin(s, f);
+    t += m && m.diff > 0 ? `、予定（${Fmt.hm(s.targetEnd)}）より約${Math.round(m.diff)}分遅れる見込みです。` : "ます。";
+    return t + `\n安全第一で進めます。対応の指示があればお願いします。（${now}時点）`;
+  }
+  if (kind === "トラブル") return `お疲れさまです。${trip}でトラブルが発生しました。\n内容：（ここに状況を書く）\n現在${delivered}個完了、残り${remaining}個です。\n対応の指示をお願いします。（${now}時点）`;
+  if (kind === "荷物") return `お疲れさまです。${trip}で荷物の（余り／不足）がありました。\n荷物の番号：（ここに書く）\n状況：（ここに書く）\n対応の指示をお願いします。（${now}時点）`;
+  const open = (s.notes || []).filter((n) => !n.done && n.deadline);
+  let t = `お疲れさまです。${trip}の時間指定についてご相談です。\n`;
+  if (open[0]) t += `#${open[0].stop}（${open[0].tag}・${Fmt.hm(open[0].deadline)}まで）が間に合わない可能性があります。\n`;
+  if (f.eta) t += `現在の終了予測は${Fmt.hm(f.eta)}です。\n`;
+  return t + `対応の指示をお願いします。（${now}時点）`;
+}
+function dayReview(s, data) {
+  const d = { good: [], improve: [] };
+  const snaps = A.eff(s);
+  d.delivered = A.delivered(s);
+  d.end = s.finishedAt || (snaps.at(-1) || {}).time;
+  d.workMinutes = d.end ? (T(d.end) - T(s.startTime)) / 60000 : null;
+  d.pace = A.sessionPace(s);
+  d.secPer = d.pace ? 3600 / d.pace : null;
+  const byReason = {};
+  for (const l of s.losses || []) if (l.start) byReason[l.reason] = (byReason[l.reason] || 0) + Math.max(0, (T(l.end || Date.now()) - T(l.start)) / 60000);
+  d.lossByReason = Object.entries(byReason).sort((a, b) => b[1] - a[1]);
+  d.lossMinutes = sum(Object.values(byReason));
+  d.misses = data.misses.filter((m) => sameDay(m.date, s.date)).length;
+  d.troubles = data.troubles.filter((m) => sameDay(m.date, s.date)).length;
+  if (d.misses === 0) d.good.push("ミスの記録はありませんでした。");
+  if (s.targetEnd && d.end && T(d.end) <= T(s.targetEnd)) d.good.push(`予定より${Math.round((T(s.targetEnd) - T(d.end)) / 60000)}分早く終わりました。`);
+  const ivs = A.intervals(s).filter((iv) => iv.hours >= 0.25).map((iv) => iv.per());
+  if (ivs.length >= 3 && Math.max(...ivs) > 0 && Math.min(...ivs) / Math.max(...ivs) >= 0.75) d.good.push("1日を通してペースが安定していました。");
+  if (d.lossMinutes > 0 && d.lossMinutes < 10) d.good.push("ロスタイムが少なく済みました。");
+  if ((s.rating.safety || 0) >= 4) d.good.push("安全を意識して配達できました。");
+  if (!d.good.length) d.good.push("最後まで記録を続けられました。データがたまるほど振り返りが正確になります。");
+  const top = d.lossByReason.find(([r]) => r !== "休憩");
+  if (top && top[1] >= 10) d.improve.push(`今日は${top[0]}によるロスタイムが${Math.round(top[1])}分ありました。`);
+  if (ivs.length >= 4) {
+    const h = Math.floor(ivs.length / 2), a1 = avg(ivs.slice(0, h)), a2 = avg(ivs.slice(h));
+    if (a1 > 0 && a2 < a1 * 0.8) d.improve.push("後半に配達ペースが下がる傾向があります。休憩の入れ方を見直すと楽になるかもしれません。");
+  }
+  const late = (s.notes || []).filter((n) => n.deadline && !n.done);
+  if (late.length) d.improve.push(`完了の記録がない締め切り付きのメモが${late.length}件あります。`);
+  for (const [cat, n] of repeatedMisses(data.misses)) d.improve.push(`最近、${cat}に関する記録が${n}回あります。手順を一緒に見直してみましょう。`);
+  return d;
+}
+
+/* ---------------- 成長・レベル・バッジ ---------------- */
+const Growth = {
+  level(data) {
+    const finished = data.sessions.filter((s) => s.finishedAt);
+    const exp = Math.min(100, finished.length * 5);
+    const paces = [...finished].sort((a, b) => T(b.startTime) - T(a.startTime)).slice(0, 10).map((s) => A.sessionPace(s)).filter(Boolean);
+    let stability = 50;
+    if (paces.length >= 3) { const m = avg(paces); const sd = Math.sqrt(avg(paces.map((p) => (p - m) ** 2))); stability = Math.round(100 * (1 - Math.min(sd / m / 0.3, 1))); }
+    const d14 = Date.now() - 14 * 86400e3;
+    const recent = Math.max(1, finished.filter((s) => T(s.date) >= d14).length);
+    const accuracy = Math.max(0, 100 - Math.round((data.misses.filter((m) => T(m.date) >= d14).length / recent) * 100));
+    let ok = 0, all = 0;
+    for (const s of finished.slice(-20)) if (s.targetEnd) { all++; if (T(s.finishedAt) - T(s.targetEnd) <= 600e3) ok++; }
+    const timeMgmt = all ? Math.round((ok / all) * 100) : 50;
+    const troubleScore = data.troubles.length ? Math.round((data.troubles.filter((t) => t.resolved).length / data.troubles.length) * 100) : 70;
+    const rated = finished.filter((s) => ratingAvg(s.rating) > 0);
+    const selfScore = rated.length ? Math.round(avg(rated.map((s) => ratingAvg(s.rating))) * 20) : 60;
+    const safeVals = rated.map((s) => s.rating.safety || 0).filter((v) => v > 0);
+    const safety = safeVals.length ? Math.round(avg(safeVals) * 20) : 60;
+    const scores = [["安全意識", safety], ["正確さ（ミスの少なさ）", accuracy], ["時間管理", timeMgmt], ["トラブル対応", troubleScore], ["安定性", stability], ["経験", exp], ["自己評価", selfScore]];
+    let level = 0; const hints = [];
+    if (exp >= 10 && accuracy >= 50) level = 1;
+    if (level >= 1 && exp >= 30 && accuracy >= 65 && safety >= 60 && timeMgmt >= 50) level = 2;
+    if (level >= 2 && exp >= 60 && accuracy >= 80 && safety >= 70 && timeMgmt >= 70 && stability >= 60) level = 3;
+    const need = (c, t) => { if (!c) hints.push(t); };
+    if (level === 0) { need(exp >= 10, `あと${Math.max(0, 2 - finished.length)}便の記録`); need(accuracy >= 50, "ミスを減らす（正確さ50以上）"); }
+    else if (level === 1) { need(exp >= 30, `あと${Math.max(0, 6 - finished.length)}便の記録`); need(accuracy >= 65, "正確さ65以上"); need(safety >= 60, "安全意識の自己評価を上げる（60以上）"); need(timeMgmt >= 50, "時間管理50以上"); }
+    else if (level === 2) { need(exp >= 60, `あと${Math.max(0, 12 - finished.length)}便の記録`); need(accuracy >= 80, "正確さ80以上"); need(safety >= 70, "安全意識70以上"); need(timeMgmt >= 70, "時間管理70以上"); need(stability >= 60, "ペースの安定性60以上"); }
+    else hints.push("独り立ちレベルです。安全第一を続けましょう。");
+    const names = [["🔰", "新人"], ["🌱", "初級"], ["🚚", "中級"], ["⭐", "独り立ち"]];
+    return { level, emoji: names[level][0], name: names[level][1], scores, hints };
+  },
+  badges(data) {
+    const finished = data.sessions.filter((s) => s.finishedAt).sort((a, b) => T(a.startTime) - T(b.startTime));
+    const since14 = Date.now() - 14 * 86400e3;
+    const badgeWindow = finished.filter((s) => T(s.startTime) >= since14).length >= 5 && !data.misses.some((m) => m.category === "時間指定" && T(m.date) >= since14);
+    const badgeStable = finished.some((s) => { const v = A.intervals(s).filter((iv) => iv.hours >= 0.25).map((iv) => iv.per()); return v.length >= 3 && Math.max(...v) > 0 && Math.min(...v) / Math.max(...v) >= 0.8; });
+    const badgeTrouble = data.troubles.filter((t) => t.resolved).length >= 3;
+    const now = Date.now();
+    const w1 = finished.filter((s) => T(s.date) >= now - 7 * 86400e3), w0 = finished.filter((s) => T(s.date) >= now - 14 * 86400e3 && T(s.date) < now - 7 * 86400e3);
+    const la = (l) => (l.length ? avg(l.map((s) => A.lossMinutes(s))) : 0);
+    const badgeLoss = w0.length && w1.length && la(w0) >= 5 && la(w1) <= la(w0) * 0.7;
+    const days = [...new Set(finished.map((s) => startOfDay(s.date).getTime()))];
+    let streak = 0, best = 0;
+    for (const d of days) { const missed = data.misses.some((m) => sameDay(m.date, d)); streak = missed ? 0 : streak + 1; best = Math.max(best, streak); }
+    return [
+      ["🎉", "はじめの1便", "1便を最後まで記録する", finished.length >= 1],
+      ["🏅", "時間指定ミス0", "14日で5便以上、時間指定のミス記録なし", badgeWindow],
+      ["🏅", "安定ペース", "1時間ごとのペースがそろった便", badgeStable],
+      ["🏅", "トラブル対応", "トラブルを3回解決", badgeTrouble],
+      ["🏅", "ロスタイム改善", "1週間のロスタイムを30%減らす", !!badgeLoss],
+      ["🏅", "5日連続ミスなし", "配達した日が5日続けてミスなし", best >= 5],
+      ["📝", "振り返り上手", "自己評価をつける", finished.some((s) => ratingAvg(s.rating) > 0)],
+      ["🦺", "安全第一", "安全意識を★5で振り返る", finished.some((s) => s.rating.safety === 5)],
+      ["🚚", "10便達成", "10便を記録する", finished.length >= 10]
+    ].map(([emoji, title, detail, earned]) => ({ emoji, title, detail, earned }));
+  },
+  weaknesses(data, days = 30) {
+    const since = Date.now() - days * 86400e3, c = {};
+    const add = (k, n = 1) => (c[k] = (c[k] || 0) + n);
+    for (const m of data.misses) if (T(m.date) >= since) add("ミス：" + m.category, 2);
+    for (const t of data.troubles) if (T(t.date) >= since) add("トラブル：" + t.category, t.resolved ? 1 : 2);
+    for (const s of data.sessions) if (T(s.date) >= since) for (const l of s.losses || []) if (l.reason !== "休憩" && l.start) add("ロス：" + l.reason, Math.max(0, (T(l.end || Date.now()) - T(l.start)) / 60000) / 10);
+    return Object.entries(c).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  }
+};
+function ratingAvg(r) { const v = RATING_KEYS.map(([k]) => (r || {})[k] || 0).filter((x) => x > 0); return v.length ? avg(v) : 0; }
+
+/* ---------------- 過去の履歴の分析 ---------------- */
+const HA = {
+  points(list) {
+    return list.map((s) => {
+      const p = A.sessionPace(s); if (!p) return null;
+      const e = s.finishedAt ? new Date(s.finishedAt) : null;
+      return { id: s.id, date: s.startTime, trip: s.trip, packages: A.initial(s), pace: p, hours: A.durationMin(s) ? A.durationMin(s) / 60 : null, endMin: e ? e.getHours() * 60 + e.getMinutes() : null, loss: A.lossMinutes(s) };
+    }).filter(Boolean).sort((a, b) => T(a.date) - T(b.date));
+  },
+  byWeekday(pts) {
+    const s = Array(7).fill(0), c = Array(7).fill(0);
+    for (const p of pts) { const w = new Date(p.date).getDay(); s[w] += p.pace; c[w]++; }
+    return [1, 2, 3, 4, 5, 6, 0].filter((w) => c[w]).map((w) => ({ label: WD[w], value: s[w] / c[w], count: c[w] }));
+  },
+  byHour(list) {
+    const pk = Array(24).fill(0), hr = Array(24).fill(0), c = Array(24).fill(0);
+    for (const s of list) for (const iv of A.intervals(s)) {
+      if (iv.hours < 0.25 || iv.dPkg < 0) continue;
+      const h = new Date(iv.from).getHours(); pk[h] += iv.dPkg; hr[h] += iv.hours; c[h]++;
+    }
+    return [...Array(24).keys()].filter((h) => hr[h] > 0).map((h) => ({ label: h + "時", value: pk[h] / hr[h], count: c[h] }));
+  },
+  minPerPkg(pts) {
+    const xy = pts.filter((p) => p.hours && p.packages > 0).map((p) => [p.packages, p.hours * 60]);
+    if (xy.length < 4) return null;
+    const mx = avg(xy.map((v) => v[0])), my = avg(xy.map((v) => v[1]));
+    let sxy = 0, sxx = 0; for (const [x, y] of xy) { sxy += (x - mx) * (y - my); sxx += (x - mx) ** 2; }
+    if (sxx <= 1) return null; const k = sxy / sxx; return k > 0 ? k : null;
+  },
+  avgPace(pts) { return avg(pts.map((p) => p.pace)); },
+  insights(pts, list, prev, label) {
+    const out = []; const a = HA.avgPace(pts); if (a == null) return out;
+    if (label) { const pv = HA.avgPace(prev); if (pv) { const r = ((a - pv) / pv) * 100; out.push(r >= 3 ? `📈 ひとつ前の${label}より、ペースが${Math.round(r)}%上がっています（${Fmt.num(pv)}→${Fmt.num(a)}個/時）。` : r <= -3 ? `📉 ひとつ前の${label}より、ペースが${Math.round(-r)}%下がっています（${Fmt.num(pv)}→${Fmt.num(a)}個/時）。荷物の量やエリアの変化も確認しましょう。` : `➡️ ひとつ前の${label}と、ペースはほぼ同じです（${Fmt.num(a)}個/時）。`); } }
+    if (pts.length >= 6) { const r1 = HA.avgPace(pts.slice(-3)), r0 = HA.avgPace(pts.slice(-6, -3)); const r = ((r1 - r0) / r0) * 100; if (r >= 5) out.push(`🔥 直近3便は、その前の3便より${Math.round(r)}%速くなっています。`); if (r <= -5) out.push(`⚠️ 直近3便は、その前の3便より${Math.round(-r)}%遅くなっています。`); }
+    const c1 = pts.filter((p) => p.trip === "C1"), c2 = pts.filter((p) => p.trip === "C2");
+    if (c1.length >= 2 && c2.length >= 2) { const d = HA.avgPace(c1) - HA.avgPace(c2); out.push(Math.abs(d) >= 0.5 ? `🚚 ${d > 0 ? "C1" : "C2"}便のほうが、1時間に約${Fmt.num(Math.abs(d))}個多く配っています。` : "🚚 C1便とC2便のペースはほぼ同じです。"); }
+    const wd = HA.byWeekday(pts).filter((v) => v.count >= 2);
+    if (wd.length >= 2) { const b = wd.reduce((x, y) => (y.value > x.value ? y : x)), w = wd.reduce((x, y) => (y.value < x.value ? y : x)); if (b.value - w.value >= 0.5) out.push(`📅 ${b.label}曜日がいちばん速く（${Fmt.num(b.value)}個/時）、${w.label}曜日がいちばん遅い（${Fmt.num(w.value)}個/時）傾向です。`); }
+    const hr = HA.byHour(list).filter((v) => v.count >= 2);
+    if (hr.length >= 2) { const f = hr.reduce((x, y) => (y.value > x.value ? y : x)), s = hr.reduce((x, y) => (y.value < x.value ? y : x)); if (f.value - s.value >= 1) out.push(`⏰ ${f.label}台がいちばん進み（${Fmt.num(f.value)}個/時）、${s.label}台がいちばん進みにくい（${Fmt.num(s.value)}個/時）時間帯です。`); }
+    const k = HA.minPerPkg(pts); if (k) out.push(`📦 荷物が10個増えると、終わるまでの時間が約${Math.round(k * 10)}分のびる計算です。`);
+    const la = avg(pts.map((p) => p.loss)); if (la >= 1) out.push(`⏳ ロスタイムは1便あたり平均${Math.round(la)}分です。減らせると、そのぶん早く終わります。`);
+    if (!out.length) out.push("記録が増えると、曜日・時間帯・便ごとの傾向がここに表示されます。");
+    return out;
+  }
+};
+
+/* ---------------- スクショの読み取り（文字→数字） ---------------- */
+const OCR = {
+  normalize(s) {
+    return String(s)
+      .replace(/[０-９Ａ-Ｚａ-ｚ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
+      .replace(/[～〜∼]/g, "~").replace(/[－−‐–—]/g, "-").replace(/：/g, ":").replace(/（/g, "(").replace(/）/g, ")")
+      .replace(/([^\x00-\x7F])\s+(?=[^\x00-\x7F])/g, "$1") // 日本語どうしの間の空白を消す
+      .replace(/(\d)\s+(?=[件個のつ])/g, "$1")
+      .replace(/(?<![A-Za-z0-9-])(\d)\s(?=\d(?:\D|$))/g, "$1"); // 「3 2件」→「32件」
+  },
+  int(re, text) { const m = text.match(re); return m ? parseInt(m[1], 10) : null; },
+  parse(rawLines, ref = new Date()) {
+    const lines = rawLines.map(OCR.normalize);
+    const all = lines.join("\n");
+    const r = { bags: [] };
+    for (const line of lines.slice(0, 4)) {
+      const m = line.match(/(?<![0-9])([0-9]{1,2}):([0-9]{2})(?![0-9])/);
+      if (m && +m[1] < 24 && +m[2] < 60) { r.time = atTime(ref, `${m[1]}:${m[2]}`); break; }
+    }
+    r.destinations = OCR.int(/([0-9]+)\s*件の目的地/, all);
+    r.locations = OCR.int(/([0-9]+)\s*件の\s*ロケーション/, all);
+    r.packages = OCR.int(/([0-9]+)\s*個の荷物/, all);
+    r.undelivered = OCR.int(/未配達\s*([0-9]+)/, all);
+    r.completed = OCR.int(/完了\s*([0-9]+)/, all);
+    r.bags = OCR.bags(lines);
+    return r;
+  },
+  colors: ["オレンジ", "ピンク", "グレー", "ネイビー", "ベージュ", "水色", "黄緑", "黒", "緑", "青", "黄", "紫", "赤", "白", "灰", "茶"],
+  bags(lines) {
+    const bags = []; let inOverflow = false, pending = null, cur = null;
+    const fill = (bag, line) => {
+      if (!line.trim()) return;
+      const nums = line.match(/[0-9]{3,5}/g); if (!nums) return;
+      const num = nums.at(-1); bag.number = num;
+      if (bag.overflow) bag.size = line.replace(num, "").trim();
+      else { const c = OCR.colors.find((x) => line.includes(x)); if (c) bag.color = c; }
+    };
+    for (let line of lines) {
+      line = line.replace(/C(\d{1,2})-(\d{1,2})([A-Z])/g, "C$1-$2$3").replace(/C(\d{1,2})[ _](\d{1,2})([A-Z])/g, "C$1-$2$3");
+      if (/溢れ|あふれ/.test(line)) { inOverflow = true; cur = null; continue; }
+      const am = line.match(/目的エリア\s*([0-9]+)\s*[~\-ーへ]\s*([0-9]+)/);
+      const area = am ? [+am[1], +am[2]] : null;
+      const cm = line.match(/C[0-9]{1,2}-[0-9]{1,2}[A-Z]/);
+      if (cm) {
+        const bag = { id: uid(), code: cm[0], color: "", number: "", from: 0, to: 0, overflow: inOverflow, size: "", done: false };
+        const a = area || (inOverflow ? pending : null);
+        if (a) { bag.from = a[0]; bag.to = a[1]; }
+        fill(bag, area ? "" : line.replace(cm[0], ""));
+        bags.push(bag); cur = bags.length - 1; continue;
+      }
+      if (area) { pending = area; cur = null; continue; }
+      if (cur != null && !bags[cur].number) fill(bags[cur], line);
+    }
+    return bags;
+  },
+  bagKey(b) { return `${b.code}|${b.from ? b.from + "-" + b.to : b.number}|${b.overflow ? "o" : "b"}`; },
+  _worker: null,
+  async read(file, onProgress) {
+    if (!window.Tesseract) {
+      onProgress && onProgress("文字認識の準備中（初回だけ少し時間がかかります）…");
+      await new Promise((ok, ng) => { const sc = document.createElement("script"); sc.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"; sc.onload = ok; sc.onerror = () => ng(new Error("文字認識の部品を読み込めませんでした")); document.head.appendChild(sc); });
+    }
+    if (!OCR._worker) OCR._worker = await Tesseract.createWorker(["jpn", "eng"], 1, { logger: (m) => { if (m.status === "recognizing text" && onProgress) onProgress(`読み取り中… ${Math.round(m.progress * 100)}%`); } });
+    const { data } = await OCR._worker.recognize(file);
+    return (data.lines || []).map((l) => l.text.trim()).filter(Boolean);
+  }
+};
+
+/* =========================================================
+   グラフ（SVG・外部ライブラリなし）
+   ========================================================= */
+const Chart = {
+  niceTicks(min, max, n = 4) {
+    if (!(max > min)) { max = min + 1; }
+    const span = max - min, step0 = span / n, mag = 10 ** Math.floor(Math.log10(step0));
+    const step = [1, 2, 2.5, 5, 10].map((k) => k * mag).find((s) => span / s <= n) || 10 * mag;
+    const a = Math.floor(min / step) * step, b = Math.ceil(max / step) * step, out = [];
+    for (let v = a; v <= b + step / 2; v += step) out.push(Math.round(v * 1000) / 1000);
+    return out;
+  },
+  frame(o) {
+    const W = o.w || 420, Hh = o.h || 220, L = 40, Rr = 12, Tt = 14, B = 28;
+    const xs = (x) => L + ((x - o.xMin) / (o.xMax - o.xMin || 1)) * (W - L - Rr);
+    const ys = (y) => Tt + (1 - (y - o.yMin) / (o.yMax - o.yMin || 1)) * (Hh - Tt - B);
+    let g = "";
+    for (const t of o.yTicks) g += `<line x1="${L}" x2="${W - Rr}" y1="${ys(t)}" y2="${ys(t)}" class="grid"/><text x="${L - 6}" y="${ys(t) + 4}" text-anchor="end" class="tick">${t}</text>`;
+    for (const t of o.xTicks || []) g += `<text x="${xs(t.v)}" y="${Hh - 8}" text-anchor="middle" class="tick">${esc(t.label)}</text>`;
+    return { W, Hh, L, Rr, Tt, B, xs, ys, g };
+  },
+  wrap(F, inner, legend) {
+    const lg = legend && legend.length ? `<div class="legend">${legend.map((l) => `<span><i style="background:${l.color}${l.dash ? ";height:2px" : ""}"></i>${esc(l.name)}</span>`).join("")}</div>` : "";
+    return `<svg class="chart" viewBox="0 0 ${F.W} ${F.Hh}" role="img">${F.g}${inner}</svg>${lg}`;
+  },
+  /** series: [{name,color,points:[{x,y}],dash,dots}] */
+  line(o) {
+    const pts = o.series.flatMap((s) => s.points);
+    if (!pts.length) return `<p class="muted">データがまだありません</p>`;
+    const yMin = o.yMin ?? Math.min(0, ...pts.map((p) => p.y)), yMax0 = o.yMax ?? Math.max(...pts.map((p) => p.y), ...(o.rules || []).map((r) => r.y));
+    const yTicks = Chart.niceTicks(yMin, yMax0 * 1.05);
+    const xMin = o.xMin ?? Math.min(...pts.map((p) => p.x)), xMax = o.xMax ?? Math.max(...pts.map((p) => p.x));
+    const F = Chart.frame({ ...o, xMin, xMax: xMax > xMin ? xMax : xMin + 1, yMin: yTicks[0], yMax: yTicks.at(-1), yTicks });
+    let inner = "";
+    for (const r of o.rules || []) inner += `<line x1="${F.L}" x2="${F.W - F.Rr}" y1="${F.ys(r.y)}" y2="${F.ys(r.y)}" stroke="${r.color || "#999"}" stroke-dasharray="5 4"/><text x="${F.L + 4}" y="${F.ys(r.y) - 4}" class="tick">${esc(r.label || "")}</text>`;
+    for (const s of o.series) {
+      if (!s.points.length) continue;
+      const d = s.points.map((p, i) => `${i ? "L" : "M"}${F.xs(p.x).toFixed(1)},${F.ys(p.y).toFixed(1)}`).join("");
+      inner += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2.5" ${s.dash ? 'stroke-dasharray="6 5"' : ""} stroke-linejoin="round"/>`;
+      if (s.dots !== false) for (const p of s.points) inner += `<circle cx="${F.xs(p.x)}" cy="${F.ys(p.y)}" r="3.5" fill="${s.color}"><title>${esc(p.tip || "")}</title></circle>`;
+    }
+    return Chart.wrap(F, inner, o.series.length > 1 || o.legend ? o.series.map((s) => ({ name: s.name, color: s.color, dash: s.dash })) : null);
+  },
+  /** items: [{label,value,color,tip}] */
+  bar(o) {
+    if (!o.items.length) return `<p class="muted">データがまだありません</p>`;
+    const vals = o.items.map((i) => i.value);
+    const yTicks = Chart.niceTicks(0, Math.max(...vals, o.rule || 0) * 1.12);
+    const n = o.items.length;
+    const F = Chart.frame({ ...o, xMin: -0.5, xMax: n - 0.5, yMin: 0, yMax: yTicks.at(-1), yTicks, xTicks: o.items.map((it, i) => ({ v: i, label: it.label })) });
+    const bw = Math.min(30, ((F.W - F.L - F.Rr) / n) * 0.62);
+    let inner = "";
+    o.items.forEach((it, i) => {
+      const x = F.xs(i) - bw / 2, y = F.ys(Math.max(0, it.value)), h = F.ys(0) - y;
+      inner += `<rect x="${x}" y="${y}" width="${bw}" height="${Math.max(0, h)}" rx="5" fill="${it.color || "var(--accent)"}"><title>${esc(it.tip || it.label + " " + Fmt.num(it.value))}</title></rect>`;
+      if (o.values) inner += `<text x="${F.xs(i)}" y="${y - 4}" text-anchor="middle" class="tick">${Fmt.num(it.value)}</text>`;
+    });
+    if (o.rule) inner += `<line x1="${F.L}" x2="${F.W - F.Rr}" y1="${F.ys(o.rule)}" y2="${F.ys(o.rule)}" stroke="#888" stroke-dasharray="5 4"/>`;
+    return Chart.wrap(F, inner, o.legend);
+  },
+  scatter(o) {
+    const pts = o.series.flatMap((s) => s.points);
+    if (pts.length < 2) return `<p class="muted">データがまだありません</p>`;
+    const xT = Chart.niceTicks(Math.min(...pts.map((p) => p.x)) * 0.95, Math.max(...pts.map((p) => p.x)) * 1.05);
+    const yT = Chart.niceTicks(0, Math.max(...pts.map((p) => p.y)) * 1.1);
+    const F = Chart.frame({ ...o, xMin: xT[0], xMax: xT.at(-1), yMin: 0, yMax: yT.at(-1), yTicks: yT, xTicks: xT.map((v) => ({ v, label: v })) });
+    let inner = "";
+    for (const s of o.series) for (const p of s.points) inner += `<circle cx="${F.xs(p.x)}" cy="${F.ys(p.y)}" r="6" fill="${s.color}" fill-opacity=".8"><title>${esc(p.tip || "")}</title></circle>`;
+    return Chart.wrap(F, inner, o.series.map((s) => ({ name: s.name, color: s.color })));
+  }
+};
+const TRIP_COLOR = { C1: "#2c6fe0", C2: "#f08c00" };
+
+/* =========================================================
+   状態・保存・画面の切り替え
+   ========================================================= */
+const S = {
+  mode: "loading", data: null, user: null, local: false,
+  route: { tab: "today", page: null, id: null },
+  trip: "C1", seg: { charts: "history", memo: "bags", period: "30", tripFilter: "all" },
+  modal: null, save: "saved", dirty: false, toast: null, search: "", chat: []
+};
+const LOCAL_KEY = "hp_local_data";
+const cacheKey = () => "hp_cache_" + (S.user ? S.user.id : "x");
+
+/* ---------- 保存 ---------- */
+let saveTimer = null, retryTimer = null;
+function markDirty() {
+  S.dirty = true;
+  writeCache();
+  if (S.local) { S.save = "saved"; S.dirty = false; return; }
+  S.save = "saving";
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(flush, 1200);
+}
+function writeCache() {
+  try {
+    if (S.local) localStorage.setItem(LOCAL_KEY, JSON.stringify(S.data));
+    else localStorage.setItem(cacheKey(), JSON.stringify({ data: S.data, dirty: S.dirty, savedAt: Date.now() }));
+  } catch (e) { /* 端末の保存がいっぱいでも、クラウドには保存する */ }
+}
+async function flush() {
+  if (S.local || !S.dirty) return;
+  clearTimeout(retryTimer);
+  try {
+    S.dirty = false;
+    S.lastSync = await Cloud.save(S.data);
+    S.save = "saved";
+    writeCache();
+  } catch (e) {
+    S.dirty = true;
+    if (e.status === 401 || !Cloud.session) { S.save = "error"; toast("ログインが切れました。もう一度ログインしてください。"); S.mode = "auth"; render(); return; }
+    S.save = "offline";
+    retryTimer = setTimeout(flush, 15000);
+  }
+  updateSavePill();
+}
+function updateSavePill() {
+  const el = $("#savepill");
+  if (!el) return;
+  const map = { saved: ["✓ 保存済み", "ok"], saving: ["保存中…", "busy"], offline: ["未送信（電波待ち）", "warn"], error: ["保存できません", "warn"] };
+  const [t, c] = S.local ? ["この端末に保存", "ok"] : map[S.save] || map.saved;
+  el.textContent = t; el.className = "pill " + c;
+}
+function mutate(fn) { fn(S.data); markDirty(); render(); }
+window.addEventListener("online", () => { if (S.dirty) flush(); });
+window.addEventListener("beforeunload", (e) => { if (S.dirty && !S.local) { flush(); e.preventDefault(); e.returnValue = ""; } });
+document.addEventListener("visibilitychange", async () => {
+  if (document.visibilityState === "hidden") { if (S.dirty) flush(); return; }
+  if (S.mode === "app" && !S.local && !S.dirty && !S.modal) {
+    try { const row = await Cloud.load(); if (row && row.updated_at !== S.lastSync) { S.data = migrate(row.data); S.lastSync = row.updated_at; writeCache(); render(); } } catch {}
+  }
+});
+
+/* ---------- 起動 ---------- */
+async function boot() {
+  if (!Cloud.enabled) { S.mode = "auth"; render(); return; }
+  if (!Cloud.loadSession()) { S.mode = "auth"; render(); return; }
+  S.user = Cloud.session.user;
+  await openData();
+}
+async function openData() {
+  S.local = !Cloud.enabled;
+  let cache = null;
+  try { cache = JSON.parse(localStorage.getItem(cacheKey()) || "null"); } catch {}
+  if (cache && cache.data) { S.data = migrate(cache.data); S.mode = "app"; render(); }
+  try {
+    const row = await Cloud.load();
+    if (cache && cache.dirty && cache.data && (!row || cache.savedAt > T(row.updated_at))) {
+      S.data = migrate(cache.data); S.dirty = true; flush();
+    } else if (row) {
+      S.data = migrate(row.data); S.lastSync = row.updated_at; S.dirty = false; writeCache();
+    } else {
+      S.data = migrate(cache && cache.data); S.dirty = true; flush();
+    }
+    S.mode = "app"; S.save = S.dirty ? "saving" : "saved";
+  } catch (e) {
+    if (e.status === 401 || !Cloud.session) { S.mode = "auth"; S.authError = "ログインの期限が切れました。もう一度ログインしてください。"; render(); return; }
+    if (!S.data) { S.mode = "auth"; S.authError = authErrorText(e); render(); return; }
+    S.save = "offline";
+  }
+  afterOpen();
+}
+function startLocal() {
+  S.local = true; S.user = null;
+  try { S.data = migrate(JSON.parse(localStorage.getItem(LOCAL_KEY) || "null")); } catch { S.data = newData(); }
+  writeCache(); S.mode = "app"; afterOpen();
+}
+function afterOpen() {
+  S.trip = (S.data.sessions.slice().sort((a, b) => T(b.startTime) - T(a.startTime))[0] || {}).trip || "C1";
+  if (!S.data.settings.onboarded) S.modal = { type: "onboarding", step: 0 };
+  render(); startReminderLoop();
+}
+
+/* ---------- 便の取り出し ---------- */
+function sessionsOf(trip) { return S.data.sessions.filter((s) => s.trip === trip).sort((a, b) => T(b.startTime) - T(a.startTime)); }
+function latestSession(trip) { return sessionsOf(trip)[0] || null; }
+function activeSession(trip = S.trip) {
+  const s = latestSession(trip);
+  if (!s) return null;
+  if (!s.finishedAt || sameDay(s.startTime, new Date())) return s;
+  return null;
+}
+function findSession(id) { return S.data.sessions.find((s) => s.id === id); }
+function forecastOf(s) { return A.forecast(s, S.data.sessions, S.data.settings); }
+
+/* ---------- 画面 ---------- */
+const TABS = [["today", "🚚", "今日"], ["charts", "📊", "グラフ"], ["memo", "🎒", "バッグ・メモ"], ["trouble", "🛟", "困った時"], ["history", "🗓️", "履歴"]];
+function go(tab, page = null, id = null) { S.route = { tab, page, id }; S.modal = null; render(); window.scrollTo(0, 0); }
+function back() { S.route = { tab: S.route.tab, page: S.route.parent || null, id: S.route.parentId || null }; render(); window.scrollTo(0, 0); }
+function toast(t) { S.toast = t; renderToast(); clearTimeout(toast._t); toast._t = setTimeout(() => { S.toast = null; renderToast(); }, 2600); }
+function renderToast() { const el = $("#toast"); if (el) { el.textContent = S.toast || ""; el.classList.toggle("show", !!S.toast); } }
+
+function render() {
+  const root = $("#app");
+  if (S.mode === "loading") { root.innerHTML = `<div class="center"><div class="spinner"></div><p>読み込み中…</p></div>`; return; }
+  if (S.mode === "auth") { root.innerHTML = viewAuth() + `<div id="modal">${S.modal ? viewModal(S.modal) : ""}</div><div id="toast" class="toast"></div>`; return; }
+  const r = S.route;
+  const pageTitle = { today: "今日", charts: "グラフ・分析", memo: "バッグ・メモ", trouble: "困った時", history: "履歴" }[r.tab];
+  let body = "";
+  try { body = viewRoute(r); } catch (e) { console.error(e); body = `<div class="card"><b>表示中にエラーが起きました。</b><p class="muted">${esc(e.message)}</p><button class="btn" data-act="go" data-tab="today">今日に戻る</button></div>`; }
+  root.innerHTML = `
+    <header class="top">
+      <div class="top-in">
+        ${r.page ? `<button class="iconbtn" data-act="back" aria-label="戻る">‹</button>` : `<span class="brand">配達データ分析</span>`}
+        <h1>${esc(r.page ? (S.pageTitle || pageTitle) : pageTitle)}</h1>
+        <span id="savepill" class="pill"></span>
+        <button class="iconbtn" data-act="settings" aria-label="設定">⚙️</button>
+      </div>
+    </header>
+    ${S.local ? `<div class="banner">お試しモード：データはこのブラウザだけに保存されます。履歴を消すと消えます。</div>` : ""}
+    <main class="wrap">${body}</main>
+    <nav class="tabbar">${TABS.map(([k, ic, t]) => `<button data-act="go" data-tab="${k}" class="${r.tab === k ? "on" : ""}"><span>${ic}</span>${t}</button>`).join("")}</nav>
+    <div id="modal">${S.modal ? viewModal(S.modal) : ""}</div>
+    <div id="toast" class="toast"></div>`;
+  updateSavePill(); renderToast();
+  document.body.classList.toggle("lock", !!S.modal);
+}
+function viewRoute(r) {
+  S.pageTitle = null;
+  if (r.tab === "today") return r.page === "assistant" ? viewAssistant() : viewToday();
+  if (r.tab === "charts") return viewCharts();
+  if (r.tab === "memo") return viewMemo();
+  if (r.tab === "trouble") return viewTroubleRoute(r);
+  if (r.tab === "history") return viewHistoryRoute(r);
+  return "";
+}
+
+/* ---------- ログイン画面 ---------- */
+function viewAuth() {
+  const reg = S.authMode === "signup";
+  return `<div class="auth">
+    <div class="auth-card">
+      <div class="logo">📦</div>
+      <h1>配達データ分析</h1>
+      <p class="muted">配達の終了時刻を、自分のペースで予測します。iPhone・Android・パソコンのブラウザで使えます。</p>
+      ${Cloud.enabled ? `
+      <div class="seg" role="tablist">
+        <button data-act="authmode" data-v="login" class="${!reg ? "on" : ""}">ログイン</button>
+        <button data-act="authmode" data-v="signup" class="${reg ? "on" : ""}">新しく登録</button>
+      </div>
+      <form data-form="auth" autocomplete="on">
+        <label>ログインID<input name="id" required minlength="3" maxlength="40" autocomplete="username" autocapitalize="none" spellcheck="false" value="${esc(S.authId || "")}" placeholder="例：kuma2026" pattern="[A-Za-z0-9_.@\\-]+"></label>
+        <label>パスワード<input name="pw" type="password" required minlength="8" autocomplete="${reg ? "new-password" : "current-password"}" placeholder="8文字以上"></label>
+        ${reg ? `<label>パスワード（確認）<input name="pw2" type="password" required minlength="8" autocomplete="new-password"></label>
+        <p class="note">⚠️ IDとパスワードは忘れないように控えてください。忘れると、データを取り出せなくなります。</p>` : ""}
+        ${S.authError ? `<p class="err">${esc(S.authError)}</p>` : ""}
+        <button class="btn primary big" type="submit" ${S.authBusy ? "disabled" : ""}>${S.authBusy ? "お待ちください…" : reg ? "登録してはじめる" : "ログイン"}</button>
+      </form>
+      <p class="muted small">データはサーバーに保存されます。ブラウザの履歴を消しても、端末を変えても、同じIDとパスワードでログインすれば続きから使えます。</p>
+      ` : `
+      <p class="note">サーバーの設定がまだのため、今は<b>お試しモード</b>だけ使えます（この端末のブラウザにだけ保存）。</p>`}
+      <button class="btn ${Cloud.enabled ? "ghost" : "primary big"}" data-act="local">${Cloud.enabled ? "登録せずにお試しで使う（この端末だけ）" : "お試しモードではじめる"}</button>
+      <p class="muted small"><a href="#" data-act="privacy">プライバシーポリシー</a></p>
+    </div>
+  </div>`;
+}
+async function submitAuth(fd) {
+  const id = String(fd.get("id") || "").trim(), pw = String(fd.get("pw") || ""), pw2 = fd.get("pw2");
+  S.authError = null; S.authId = id;
+  if (!/^[A-Za-z0-9_.@-]{3,40}$/.test(id)) { S.authError = "IDは3〜40文字の半角英数字（-_.も可）にしてください。"; render(); return; }
+  if (pw.length < 8) { S.authError = "パスワードは8文字以上にしてください。"; render(); return; }
+  if (pw2 != null && pw !== pw2) { S.authError = "確認用のパスワードが一致しません。"; render(); return; }
+  S.authBusy = true; render();
+  try {
+    S.user = S.authMode === "signup" ? await Cloud.signUp(id, pw) : await Cloud.signIn(id, pw);
+    S.authBusy = false; S.loginId = id;
+    await openData();
+  } catch (e) {
+    S.authBusy = false; S.authError = authErrorText(e); render();
+  }
+}
+
+/* ---------- リマインダー（画面を開いている間だけ） ---------- */
+let reminderLoop = null;
+function startReminderLoop() {
+  clearInterval(reminderLoop);
+  reminderLoop = setInterval(() => {
+    const st = S.data && S.data.settings;
+    if (!st || !st.reminderOn) return;
+    const s = activeSession(); if (!s || s.finishedAt) return;
+    const last = A.sorted(s).at(-1); if (!last) return;
+    const mins = (Date.now() - T(last.time)) / 60000;
+    if (mins >= st.reminderMinutes && (!S._lastRemind || Date.now() - S._lastRemind > st.reminderMinutes * 60000)) {
+      S._lastRemind = Date.now();
+      const msg = `前回の記録から${Math.round(mins)}分たちました。進捗を記録しましょう。`;
+      toast(msg);
+      try { if ("Notification" in window && Notification.permission === "granted") new Notification("配達データ分析", { body: msg }); } catch {}
+    }
+  }, 60000);
+}
+
+/* =========================================================
+   画面（タブごと）
+   ========================================================= */
+const card = (title, icon, body, right = "") => `<section class="card">${title ? `<div class="ct"><span>${icon ? icon + " " : ""}${esc(title)}</span>${right}</div>` : ""}${body}</section>`;
+const mini = (t, v, cls = "") => `<div class="mini"><span>${esc(t)}</span><b class="${cls}">${v}</b></div>`;
+const tripPicker = () => `<div class="seg">${["C1", "C2"].map((t) => `<button data-act="trip" data-v="${t}" class="${S.trip === t ? "on" : ""}">${t}便</button>`).join("")}</div>`;
+const tripBadge = (t) => `<span class="badge" style="background:${TRIP_COLOR[t]}22;color:${TRIP_COLOR[t]}">${t}</span>`;
+const stars = (n) => "★".repeat(n || 0) + "☆".repeat(5 - (n || 0));
+
+/* ================= 今日 ================= */
+function viewToday() {
+  const s = activeSession();
+  let h = tripPicker();
+  if (!s) {
+    h += card("配達をはじめる", "▶️", `
+      <form data-form="start" class="grid2">
+        <label>日付<input type="date" name="date" value="${Fmt.inputDate()}" required></label>
+        <label>開始時刻<input type="time" name="start" value="${Fmt.inputTime()}" required></label>
+        <label>目標の終了時刻（任意）<input type="time" name="target"></label>
+        <label>荷物の個数<input type="number" name="pkg" min="0" inputmode="numeric" placeholder="例：120"></label>
+        <label>目的地の件数<input type="number" name="dest" min="0" inputmode="numeric" placeholder="例：80"></label>
+        <label>ロケーション<input type="number" name="loc" min="0" inputmode="numeric" placeholder="任意"></label>
+        <button class="btn primary big span2" type="submit">${S.trip}便を開始</button>
+      </form>
+      <p class="muted small">配達アプリの進捗画面のスクショからも始められます。</p>
+      <label class="btn ghost filebtn">📷 スクショから読み取って開始<input type="file" accept="image/*" data-act="ocr-start" hidden></label>`);
+    if (!S.data.sessions.length) h += card("はじめての方へ", "👋", `<p>記録がまだありません。お試しデータを入れると、すべての機能の見え方を確認できます（あとで設定から消せます）。</p><button class="btn" data-act="demo-add">お試しデータで全部の機能を見てみる</button>`);
+    const last = latestSession(S.trip);
+    if (last) h += card("前回の" + S.trip + "便", "🕘", sessionRow(last));
+    return h;
+  }
+  const f = forecastOf(s);
+  h += etaCard(s, f);
+  h += `<div class="row3">
+      <button class="btn primary" data-act="snap-new">＋ 記録を追加</button>
+      <label class="btn filebtn">📷 スクショ<input type="file" accept="image/*" multiple data-act="ocr-snap" hidden></label>
+      ${s.finishedAt ? `<button class="btn" data-act="reopen">再開する</button>` : `<button class="btn" data-act="finish">終了</button>`}
+    </div>`;
+  h += `<button class="trouble-big" data-act="trouble-sheet">🛟 困った時はここ</button>`;
+  const alerts = buildAlerts(s, f, S.data);
+  if (alerts.length) h += card("注意事項", "🔔", alerts.map((a) => `<div class="alert ${a.level}">${esc(a.text)}</div>`).join(""));
+  if (!f.isDone) h += paceMakerCard(s, f);
+  h += lossCard(s);
+  h += `<div class="quick">
+      <button data-act="speak">🔊<span>読み上げ</span></button>
+      <button data-act="modal" data-type="miss">✍️<span>ミス記録</span></button>
+      <button data-act="modal" data-type="review" data-id="${s.id}">⭐<span>振り返り</span></button>
+      <button data-act="go" data-tab="today" data-page="assistant">💬<span>アシスタント</span></button>
+      <button data-act="modal" data-type="contact">📨<span>連絡文</span></button>
+    </div>`;
+  h += remainingCard(s, f);
+  h += nextBagCard(s, f);
+  h += upcomingNotesCard(s, f);
+  h += card("残りの荷物の推移", "📉", remainingChart(s));
+  h += card("記録（" + s.snapshots.length + "回）", "🗒️", snapList(s));
+  return h;
+}
+function etaCard(s, f) {
+  if (!f.hasData) return card(s.trip + "便", "🕐", `<p>まだ記録がありません。「記録を追加」かスクショで、残りの荷物の数を入れてください。</p>`);
+  const m = A.margin(s, f);
+  const left = f.eta && !f.isDone ? T(f.eta) - Date.now() : null;
+  return `<section class="card eta">
+    <div class="ct"><span>${tripBadge(s.trip)} ${f.isDone ? "終了" : "終了予定"}</span>${m ? `<span class="badge m-${m.key}">${m.emoji} ${m.label}</span>` : ""}</div>
+    <div class="eta-time">${Fmt.hm(f.eta)}</div>
+    ${f.isDone ? `<p class="teal">おつかれさまでした！ ${Fmt.dur(T(f.eta) - T(s.startTime))}で終了</p>` : left != null ? `<p class="teal big">${left > 0 ? "あと " + Fmt.dur(left) : "予定時刻を過ぎています"}</p>` : ""}
+    ${!f.isDone ? `<p class="muted small">計算方法：${esc(f.method)}${f.notes.length ? "／" + esc(f.notes.join("、")) : ""}</p>` : ""}
+    ${f.etaSimilar && !f.isDone ? `<p class="muted small">荷物の量が近い過去${f.similarCount}回の平均なら ${Fmt.hm(f.etaSimilar)}</p>` : ""}
+    ${s.targetEnd ? `<p class="small">目標 ${Fmt.hm(s.targetEnd)}${f.requiredPace && isFinite(f.requiredPace) && !f.isDone ? ` ／ 必要なペース ${Fmt.num(f.requiredPace)}個/時（今 ${Fmt.num(f.pkgPace)}個/時）` : ""}</p>` : ""}
+  </section>`;
+}
+function paceMakerCard(s, f) {
+  const total = A.initial(s), done = A.delivered(s);
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  const ideal = A.idealDelivered(s, Date.now());
+  let txt = "";
+  if (ideal != null) {
+    const diff = Math.round(done - ideal);
+    txt = diff >= 0 ? `<b class="g">目標より ${diff}個 先行</b>` : `<b class="r">目標より ${-diff}個 遅れ</b>`;
+  } else txt = `<span class="muted">目標の終了時刻を入れると、目標との差が出ます。</span>`;
+  const ipct = ideal != null && total ? Math.round((ideal / total) * 100) : null;
+  return card("ペースメーカー", "🏃", `
+    <div class="pm"><div class="pm-bar"><i style="width:${pct}%"></i>${ipct != null ? `<em style="left:${ipct}%"></em>` : ""}</div>
+    <div class="pm-row"><span>${done} / ${total}個（${pct}%）</span>${txt}</div></div>
+    <div class="minis">${mini("今のペース", Fmt.num(f.currentPace ?? f.pkgPace) + "個/時")}${mini("過去の平均", f.historyPace ? Fmt.num(f.historyPace) + "個/時" : "-")}${mini("あと", f.remainingPkg + "個")}</div>`, `<button class="link" data-act="modal" data-type="remaining">残り時間モード</button>`);
+}
+function lossCard(s) {
+  const run = (s.losses || []).find((l) => !l.end);
+  const total = A.lossMinutes(s, true);
+  let b = run
+    ? `<div class="alert blue">⏱️ ${esc(run.reason)} を計測中（${Fmt.hm(run.start)}〜）</div><button class="btn primary" data-act="loss-stop">計測を止める</button>`
+    : `<p class="muted small">渋滞・荷物探しなどで止まった時に押すと、その時間をペースの計算から外します。</p><div class="chips">${LOSS_REASONS.map((r) => `<button class="chip" data-act="loss-start" data-v="${r}">${r}</button>`).join("")}</div>`;
+  const list = (s.losses || []).filter((l) => l.end);
+  if (list.length) b += `<details><summary>今日の記録（合計 ${Math.round(total)}分）</summary>${list.map((l) => `<div class="li"><span>${esc(l.reason)}</span><span class="muted">${Fmt.hm(l.start)}〜${Fmt.hm(l.end)}（${Math.round((T(l.end) - T(l.start)) / 60000)}分）</span><button class="x" data-act="loss-del" data-id="${l.id}" aria-label="削除">×</button></div>`).join("")}</details>`;
+  return card("ロスタイム", "⏳", b);
+}
+function remainingCard(s, f) {
+  const l = A.sorted(s).at(-1); if (!l) return "";
+  return card("残り", "📦", `<div class="minis">${mini("荷物", f.remainingPkg + "個", "or")}${mini("目的地", f.remainingDest + "件")}${mini("ロケーション", (l.locations || 0) + "件")}${mini("配達済み", A.delivered(s) + "個", "g")}${mini("次の目的地", "#" + f.nextStop)}${mini("最終記録", Fmt.hm(l.time))}</div>`);
+}
+function nextBagCard(s, f) {
+  const bags = (s.bags || []).filter((b) => !b.overflow && !b.done);
+  if (!bags.length) return "";
+  const n = f.nextStop || 1;
+  const cur = bags.find((b) => b.from && n >= b.from && n <= Math.max(b.from, b.to)) || bags.filter((b) => b.from >= n).sort((a, b) => a.from - b.from)[0];
+  if (!cur) return "";
+  const of = (s.bags || []).filter((b) => b.overflow && !b.done && b.from && n <= Math.max(b.from, b.to) && b.to >= n - 3);
+  return card("次のバッグ", "🎒", `${bagRow(cur, s.id)}${of.length ? `<p class="small b">この辺りの溢れた荷物</p>${of.map((b) => bagRow(b, s.id)).join("")}` : ""}`);
+}
+function upcomingNotesCard(s, f) {
+  const list = (s.notes || []).filter((n) => !n.done && n.stop >= (f.nextStop || 1) - 1).sort((a, b) => a.stop - b.stop).slice(0, 6);
+  if (!list.length) return "";
+  return card("この先のメモ", "📌", list.map((n) => noteRow(n, s, f)).join(""));
+}
+function snapList(s) {
+  const snaps = A.sorted(s);
+  if (!snaps.length) return `<p class="muted">記録がありません</p>`;
+  return `<div class="table"><div class="tr th"><span>時刻</span><span>荷物</span><span>目的地</span><span>予測</span><span></span></div>${snaps.slice().reverse().map((sn) => `<div class="tr"><span>${Fmt.hm(sn.time)}</span><span>${sn.packages}</span><span>${sn.destinations}</span><span class="muted">${sn.appEstimate ? Fmt.hm(sn.appEstimate) : "-"}</span><span><button class="link" data-act="snap-edit" data-id="${sn.id}">編集</button></span></div>`).join("")}</div>`;
+}
+function remainingChart(s, big) {
+  const snaps = A.eff(s); if (!snaps.length) return `<p class="muted">記録が増えるとグラフが出ます</p>`;
+  const st = T(s.startTime), total = A.initial(s) || snaps[0].packages || 1;
+  const series = [{ name: "今回", color: TRIP_COLOR[s.trip], points: snaps.map((sn) => ({ x: (T(sn.time) - st) / HOUR, y: sn.packages, tip: `${Fmt.hm(sn.time)} 残り${sn.packages}個` })) }];
+  const curve = A.averageCurve(A.past(S.data.sessions, s.startTime, s.trip));
+  if (curve) series.push({ name: "過去の平均", color: "#9aa5a8", dash: true, dots: false, points: curve.map((c) => ({ x: c.h, y: c.r * total })) });
+  const f = forecastOf(s);
+  if (f.eta && !f.isDone) { const l = snaps.at(-1); series.push({ name: "予測", color: "#34c759", dash: true, dots: false, points: [{ x: (T(l.time) - st) / HOUR, y: l.packages }, { x: (T(f.eta) - st) / HOUR, y: 0 }] }); }
+  const maxX = Math.max(...series.flatMap((x) => x.points.map((p) => p.x)), 1);
+  const ticks = []; for (let hh = 0; hh <= Math.ceil(maxX); hh++) ticks.push({ v: hh, label: Fmt.hm(new Date(st + hh * HOUR)) });
+  return Chart.line({ series, xMin: 0, xMax: Math.ceil(maxX), xTicks: ticks.filter((t, i) => ticks.length < 9 || i % 2 === 0), yMin: 0, h: big ? 280 : 220 });
+}
+function sessionRow(s) {
+  const p = A.sessionPace(s), d = A.durationMin(s);
+  return `<button class="row-btn" data-act="go" data-tab="history" data-page="session" data-id="${s.id}">
+    ${tripBadge(s.trip)}<span>${Fmt.day(s.startTime)}</span><span class="muted">${A.initial(s)}個</span><span>${p ? Fmt.num(p) + "個/時" : "-"}</span><span class="muted">${d ? Fmt.hm(s.finishedAt) + "終了" : s.finishedAt ? "" : "記録中"}</span><span class="chev">›</span></button>`;
+}
+
+/* ================= グラフ・分析 ================= */
+function viewCharts() {
+  let h = `<div class="seg">${[["history", "過去の分析"], ["latest", "最新の便"]].map(([k, t]) => `<button data-act="seg" data-k="charts" data-v="${k}" class="${S.seg.charts === k ? "on" : ""}">${t}</button>`).join("")}</div>`;
+  if (S.seg.charts === "history") return h + viewHistoryAnalysis();
+  h += tripPicker();
+  const s = latestSession(S.trip);
+  if (!s) return h + card("", "", `<p class="muted">${S.trip}便のデータがまだありません</p>`);
+  return h + `<p class="b">${tripBadge(s.trip)} ${Fmt.day(s.startTime)}</p>` + sessionAnalysis(s);
+}
+function sessionAnalysis(s) {
+  const ivs = A.intervals(s);
+  const past = A.past(S.data.sessions, s.startTime, s.trip), hist = A.stats(past);
+  const p = A.sessionPace(s);
+  let h = card("過去との比較", "⚖️", `<div class="minis">${mini("今回のペース", Fmt.num(p) + "個/時", "teal")}${mini("過去の平均", hist ? Fmt.num(hist.pkg) + "個/時" : "-")}${mini("差", p && hist ? (p - hist.pkg >= 0 ? "+" : "") + Fmt.num(p - hist.pkg) : "-", p && hist && p >= hist.pkg ? "g" : "r")}${mini("過去の所要時間", hist && hist.avgHours ? Fmt.dur(hist.avgHours * HOUR) : "-")}</div>`);
+  h += card("残りの荷物の推移", "📉", remainingChart(s, true));
+  const a = avg(ivs.filter((iv) => iv.hours >= 0.1).map((iv) => iv.per()));
+  h += card("1時間ごとの配達数（個/時）", "📊", Chart.bar({ items: ivs.filter((iv) => iv.hours >= 0.05).map((iv) => ({ label: Fmt.hm(iv.from), value: iv.per(), color: iv.per() >= (a || 0) ? "#34c759" : "#f08c00" })), rule: hist ? hist.pkg : a, values: true }) + `<p class="muted small">緑＝平均以上、オレンジ＝平均未満。点線は${hist ? "過去の平均" : "今回の平均"}。</p>`);
+  const est = A.sorted(s).filter((sn) => sn.myEstimate || sn.appEstimate);
+  if (est.length) {
+    const st = T(s.startTime), toH = (d) => (T(d) - st) / HOUR;
+    const series = [];
+    const my = est.filter((x) => x.myEstimate).map((x) => ({ x: toH(x.time), y: toH(x.myEstimate) }));
+    const ap = est.filter((x) => x.appEstimate).map((x) => ({ x: toH(x.time), y: toH(x.appEstimate) }));
+    if (ap.length) series.push({ name: "アプリの予測", color: "#2c6fe0", points: ap });
+    if (my.length) series.push({ name: "自分の予想", color: "#f08c00", points: my });
+    const rules = s.finishedAt ? [{ y: toH(s.finishedAt), label: "実際の終了 " + Fmt.hm(s.finishedAt), color: "#34c759" }] : [];
+    h += card("予測の変化（開始からの時間）", "🎯", Chart.line({ series, rules, legend: true, yMin: 0 }) + `<p class="muted small">縦軸＝予測した終了が開始から何時間後か。横軸＝記録した時点。</p>`);
+  }
+  h += card("区間ごとの記録", "🧾", ivs.length ? `<div class="table"><div class="tr th"><span>区間</span><span>荷物</span><span>目的地</span><span>個/時</span></div>${ivs.map((iv) => `<div class="tr"><span>${Fmt.hm(iv.from)}〜</span><span>-${iv.dPkg}</span><span>-${iv.dDest}</span><span>${Fmt.num(iv.per())}</span></div>`).join("")}</div>` : `<p class="muted">記録が2回以上になると表示されます</p>`);
+  const sim = A.similar(past, s);
+  if (sim) h += card("荷物の量が近い日", "🔁", `<p>荷物${A.initial(s)}個前後の過去${sim.count}回は、平均 <b>${Fmt.dur(sim.minutes * 60000)}</b> で終わっています。</p>`);
+  return h;
+}
+function viewHistoryAnalysis() {
+  const per = S.seg.period, tf = S.seg.tripFilter;
+  const days = per === "all" ? null : +per;
+  const base = S.data.sessions.filter((s) => tf === "all" || s.trip === tf);
+  const today = startOfDay(new Date()).getTime() + 86400e3;
+  const inRange = (k) => base.filter((s) => !days || (T(s.startTime) >= today - days * (k + 1) * 86400e3 && T(s.startTime) < today - days * k * 86400e3));
+  const cur = inRange(0), prev = days ? inRange(1) : [];
+  const pts = HA.points(cur), prevPts = HA.points(prev);
+  const label = days ? per + "日間" : null;
+  let h = card("過去の配達履歴を分析", "📈", `
+    <div class="seg">${[["7", "7日"], ["30", "30日"], ["90", "90日"], ["all", "すべて"]].map(([k, t]) => `<button data-act="seg" data-k="period" data-v="${k}" class="${per === k ? "on" : ""}">${t}</button>`).join("")}</div>
+    <div class="seg">${[["all", "全部"], ["C1", "C1"], ["C2", "C2"]].map(([k, t]) => `<button data-act="seg" data-k="tripFilter" data-v="${k}" class="${tf === k ? "on" : ""}">${t}</button>`).join("")}</div>`);
+  if (!pts.length) return h + card("", "", `<p class="muted">この期間の記録がまだありません。30分以上記録した便から分析します。期間を「すべて」にするか、設定の「お試しデータ」で見え方を確認できます。</p>`);
+  const pace = HA.avgPace(pts), pv = HA.avgPace(prevPts);
+  const hrs = avg(pts.map((p) => p.hours).filter(Boolean)), ends = avg(pts.map((p) => p.endMin).filter((v) => v != null));
+  h += card(`まとめ（${pts.length}便）`, "∑", `<div class="minis">
+    ${mini("平均ペース", Fmt.num(pace) + "個/時", "teal")}${mini("平均の荷物", Math.round(avg(pts.map((p) => p.packages))) + "個")}${mini("平均の所要時間", hrs ? Fmt.dur(hrs * HOUR) : "-")}
+    ${mini("平均の終了時刻", ends != null ? Fmt.mins(ends) : "-")}${mini("いちばん速い便", Fmt.num(Math.max(...pts.map((p) => p.pace))) + "個/時", "g")}${mini("ロスタイム平均", Math.round(avg(pts.map((p) => p.loss))) + "分/便", "or")}</div>
+    ${label && pv ? `<p class="small ${pace >= pv ? "g" : "r"}">ひとつ前の${label}：${Fmt.num(pv)}個/時（${pace - pv >= 0 ? "+" : ""}${Fmt.num(pace - pv)}）</p>` : ""}`);
+  h += card("分かったこと", "💡", HA.insights(pts, cur, prevPts, label).map((l) => `<p>${esc(l)}</p>`).join("") + `<p class="muted small">保存された記録だけから計算しています。</p>`);
+  const trips = ["C1", "C2"].filter((t) => pts.some((p) => p.trip === t));
+  const xIdx = (d) => (T(d) - T(pts[0].date)) / 86400e3;
+  const xmax = Math.max(1, xIdx(pts.at(-1).date));
+  const ticks = [0, xmax / 2, xmax].map((v) => ({ v, label: Fmt.day(new Date(T(pts[0].date) + v * 86400e3)).replace(/\(.\)/, "") }));
+  h += card("ペースの推移（個/時）", "📈", Chart.line({ series: trips.map((t) => ({ name: t, color: TRIP_COLOR[t], points: pts.filter((p) => p.trip === t).map((p) => ({ x: xIdx(p.date), y: p.pace, tip: `${Fmt.day(p.date)} ${Fmt.num(p.pace)}個/時` })) })), rules: [{ y: pace, label: "平均 " + Fmt.num(pace) }], xTicks: ticks, xMin: 0, xMax: xmax, legend: true }));
+  const wd = HA.byWeekday(pts), best = Math.max(...wd.map((v) => v.value));
+  h += card("曜日ごとのペース（個/時）", "📅", Chart.bar({ items: wd.map((v) => ({ label: v.label, value: v.value, color: v.value >= best - 0.01 ? "#34c759" : "var(--accent)" })), values: true }) + `<p class="muted small">${wd.map((v) => `${v.label} ${v.count}便`).join("・")}。便数が少ない曜日は参考程度に。</p>`);
+  const hr = HA.byHour(cur), ha = avg(hr.map((v) => v.value));
+  h += card("時間帯ごとのペース（個/時）", "⏰", Chart.bar({ items: hr.map((v) => ({ label: v.label, value: v.value, color: v.value >= ha ? "#34c759" : "#f08c00" })), rule: ha }) + `<p class="muted small">緑＝平均より進む時間帯、オレンジ＝進みにくい時間帯。</p>`);
+  const fin = pts.filter((p) => p.hours);
+  const k = HA.minPerPkg(pts);
+  h += card("荷物の量と、かかった時間", "📦", Chart.scatter({ series: trips.map((t) => ({ name: t, color: TRIP_COLOR[t], points: fin.filter((p) => p.trip === t).map((p) => ({ x: p.packages, y: Math.round(p.hours * 10) / 10, tip: `${p.packages}個 ${Fmt.dur(p.hours * HOUR)}` })) })) }) + `<p class="muted small">横＝荷物（個）、縦＝時間。${k ? `荷物1個あたり約${Math.round(k * 60)}秒／10個増えると約${Math.round(k * 10)}分のびます。` : ""}</p>`);
+  const sorted = [...pts].sort((a, b) => b.pace - a.pace);
+  const rows = (arr) => arr.map((p) => sessionRow(findSession(p.id))).join("");
+  h += card("速かった便・遅かった便", "🏁", `<p class="b g">速かった便</p>${rows(sorted.slice(0, 3))}${sorted.length > 3 ? `<p class="b r">遅かった便</p>${rows(sorted.slice(-3).reverse())}` : ""}<p class="muted small">タップすると、その日の記録を見られます。</p>`);
+  return h;
+}
+
+/* ================= バッグ・メモ ================= */
+function viewMemo() {
+  let h = `<div class="seg">${[["bags", "バッグ"], ["notes", "目的地メモ"], ["places", "会社・店舗"]].map(([k, t]) => `<button data-act="seg" data-k="memo" data-v="${k}" class="${S.seg.memo === k ? "on" : ""}">${t}</button>`).join("")}</div>`;
+  if (S.seg.memo === "places") return h + viewPlaces();
+  h += tripPicker();
+  const s = activeSession() || latestSession(S.trip);
+  if (!s) return h + card("", "", `<p class="muted">先に「今日」で${S.trip}便を開始してください。</p>`);
+  h += `<p class="muted small">${tripBadge(s.trip)} ${Fmt.day(s.startTime)} の便</p>`;
+  if (S.seg.memo === "bags") {
+    const bags = (s.bags || []).filter((b) => !b.overflow).sort((a, b) => a.from - b.from), over = (s.bags || []).filter((b) => b.overflow).sort((a, b) => a.from - b.from);
+    h += `<div class="row2"><button class="btn primary" data-act="modal" data-type="bag" data-sid="${s.id}">＋ バッグを追加</button><label class="btn filebtn">📷 スクショから<input type="file" accept="image/*" multiple data-act="ocr-bags" data-sid="${s.id}" hidden></label></div>`;
+    h += card(`バッグ（${bags.length}）`, "🎒", bags.length ? bags.map((b) => bagRow(b, s.id)).join("") : `<p class="muted">まだありません</p>`);
+    h += card(`溢れた荷物（${over.length}）`, "📦", over.length ? over.map((b) => bagRow(b, s.id)).join("") : `<p class="muted">まだありません</p>`);
+    return h;
+  }
+  const f = forecastOf(s);
+  const notes = (s.notes || []).slice().sort((a, b) => a.stop - b.stop);
+  h += `<button class="btn primary" data-act="modal" data-type="note" data-sid="${s.id}">＋ メモを追加（午前指定・ラッシュ便・エラーピンなど）</button>`;
+  h += card(`目的地メモ（${notes.length}）`, "📌", notes.length ? notes.map((n) => noteRow(n, s, f)).join("") : `<p class="muted">まだありません</p>`);
+  return h;
+}
+function bagRow(b, sid) {
+  const c = COLOR_HEX[b.color];
+  return `<div class="li bag ${b.done ? "done" : ""}">
+    <button class="check" data-act="bag-done" data-sid="${sid}" data-id="${b.id}" aria-label="済">${b.done ? "✓" : ""}</button>
+    ${c ? `<i class="dot" style="background:${c}"></i>` : b.overflow ? `<i class="dot ov">溢</i>` : ""}
+    <b>${esc(b.code)}</b><span>${b.from ? `#${b.from}〜${b.to}` : ""}</span><span class="muted">${esc(b.overflow ? b.size : b.color)} ${esc(b.number)}</span>
+    <button class="link" data-act="modal" data-type="bag" data-sid="${sid}" data-id="${b.id}">編集</button></div>`;
+}
+function noteRow(n, s, f) {
+  const p = n.placeId && S.data.places.find((x) => x.id === n.placeId);
+  const eta = f && A.arrival(f, n.stop);
+  const st = p ? placeStatus(p, eta || new Date()) : null;
+  return `<div class="li noterow ${n.done ? "done" : ""}">
+    <button class="check" data-act="note-done" data-sid="${s.id}" data-id="${n.id}">${n.done ? "✓" : ""}</button>
+    <b>#${n.stop}</b><span class="tag t-${STOP_TAGS.indexOf(n.tag)}">${esc(n.tag)}</span>
+    <span class="grow">${esc(n.text)}${p ? ` <span class="muted">${esc(p.name)}${st && st.text ? "・" + esc(st.text) : ""}</span>` : ""}</span>
+    <span class="muted small">${n.deadline ? Fmt.hm(n.deadline) + "まで" : ""}${eta ? ` 着${Fmt.hm(eta)}` : ""}</span>
+    <button class="link" data-act="modal" data-type="note" data-sid="${s.id}" data-id="${n.id}">編集</button></div>`;
+}
+function viewPlaces() {
+  const list = S.data.places.slice().sort((a, b) => a.name.localeCompare(b.name, "ja"));
+  return `<button class="btn primary" data-act="modal" data-type="place">＋ 会社・店舗を追加</button>` + card(`会社・店舗（${list.length}）`, "🏢", list.length ? list.map((p) => { const st = placeStatus(p); return `<div class="li"><span class="tag">${esc(p.kind)}</span><span class="grow"><b>${esc(p.name)}</b><br><span class="muted small">${esc(placeHours(p))}${p.note ? "／" + esc(p.note) : ""}</span></span><span class="small ${st.closed ? "r" : "g"}">${esc(st.text)}</span><button class="link" data-act="modal" data-type="place" data-id="${p.id}">編集</button></div>`; }).join("") : `<p class="muted">営業時間や休みの日をメモしておくと、配達中に「閉まっているかも」を知らせます。</p>`);
+}
+
+/* ================= 困った時 ================= */
+function viewTroubleRoute(r) {
+  if (r.page === "topic") return viewTopic(r.id);
+  if (r.page === "glossary") { S.pageTitle = "配達用語辞典"; return viewGlossary(); }
+  if (r.page === "areanotes") { S.pageTitle = "注意ポイント"; return viewAreaNotes(); }
+  if (r.page === "troubles") { S.pageTitle = "トラブル履歴"; return viewTroubleHistory(); }
+  if (r.page === "misses") { S.pageTitle = "ミス記録"; return viewMisses(); }
+  if (r.page === "assistant") return viewAssistant();
+  const q = S.search.trim();
+  const topics = S.data.manuals.filter((m) => !q || [m.title, m.summary, ...m.steps, ...m.points, ...m.cautions].join(" ").includes(q));
+  return `<button class="trouble-big" data-act="trouble-sheet">🛟 困った時はここ（状況から探す）</button>
+    <input class="search" type="search" placeholder="キーワードで探す（例：オートロック、余った）" value="${esc(S.search)}" data-act="search">
+    <div class="links">
+      <button data-act="go" data-tab="trouble" data-page="assistant">💬 アシスタント</button>
+      <button data-act="go" data-tab="trouble" data-page="glossary">📖 用語辞典</button>
+      <button data-act="go" data-tab="trouble" data-page="areanotes">📍 注意ポイント</button>
+      <button data-act="go" data-tab="trouble" data-page="troubles">🧯 トラブル履歴</button>
+      <button data-act="go" data-tab="trouble" data-page="misses">✍️ ミス記録</button>
+    </div>
+    ${card(`対応マニュアル（${topics.length}）`, "📘", topics.map((m) => `<button class="row-btn" data-act="go" data-tab="trouble" data-page="topic" data-id="${m.id}"><span class="tile sm" style="background:var(--accent)">${esc(m.icon)}</span><span class="grow"><b>${esc(m.title)}</b><br><span class="muted small">${esc(m.summary)}</span></span><span class="chev">›</span></button>`).join("") || `<p class="muted">見つかりません</p>`)}
+    <div class="row2"><button class="btn" data-act="modal" data-type="topic">＋ 項目を追加</button><button class="btn ghost" data-act="manual-restore">初期の項目を戻す</button></div>`;
+}
+function artTile(a, size = 56) { return `<span class="tile" style="background:linear-gradient(180deg,${a.color}cc,${a.color});width:${size}px;height:${size}px;font-size:${Math.round(size * 0.5)}px">${a.emoji}</span>`; }
+function viewTopic(id) {
+  const m = S.data.manuals.find((x) => x.id === id);
+  if (!m) return `<p>見つかりません</p>`;
+  S.pageTitle = "対応マニュアル";
+  let h = `<div class="topic-head">${artTile({ emoji: m.icon, color: "#127686" }, 64)}<h2>${esc(m.title)}</h2></div>`;
+  if (m.summary) h += `<p>${esc(m.summary)}</p>`;
+  if (m.steps.length) h += card("手順（図解）", "🧭", `<div class="flow">${m.steps.map((st, i) => { const a = stepArt(st); return `${i ? `<span class="arrow">→</span>` : ""}<div class="flow-i">${artTile(a, 56)}<b>${i + 1}. ${esc(a.caption)}</b></div>`; }).join("")}</div><hr>${m.steps.map((st, i) => `<div class="step"><span class="snum">${i + 1}</span>${artTile(stepArt(st), 44)}<p>${esc(st)}</p></div>`).join("")}`);
+  if (m.table.length) h += card("ステータス早見表", "📋", `<div class="table st">${m.table.map((r) => `<div class="tr"><span>${esc(r.place)}</span><span>${esc(r.situation)}</span><span><b class="code" style="background:${CODE_COLOR[r.code] || "#555"}">${esc(r.code)}</b></span></div>`).join("")}</div>`);
+  if (m.cautions.length) h += card("注意", "⚠️", `<ul>${m.cautions.map((c) => `<li>${esc(c)}</li>`).join("")}</ul>`);
+  if (m.points.length) h += card("ポイント", "✅", `<ul>${m.points.map((c) => `<li>${esc(c)}</li>`).join("")}</ul>`);
+  if (m.template) h += card("連絡文", "📨", `<pre class="tpl">${esc(m.template)}</pre><button class="btn" data-act="copy" data-text="${esc(m.template)}">コピー</button>`);
+  h += card("マニュアルの画像", "🖼️", `<div class="imgs">${m.images.map((src, i) => `<figure><img src="${src}" alt="マニュアルの画像${i + 1}" data-act="img-view" data-src="${i}" data-id="${m.id}"><button class="x" data-act="img-del" data-id="${m.id}" data-i="${i}">×</button></figure>`).join("")}</div>
+    <label class="btn filebtn">＋ 画像を追加（職場のマニュアルの写真など）<input type="file" accept="image/*" data-act="img-add" data-id="${m.id}" hidden></label><p class="muted small">1項目に4枚まで。画像は小さくしてから保存します。</p>`);
+  h += `<div class="row2"><button class="btn" data-act="modal" data-type="topic" data-id="${m.id}">編集</button><button class="btn danger" data-act="topic-del" data-id="${m.id}">削除</button></div>`;
+  return h;
+}
+function viewGlossary() {
+  const q = S.search.trim();
+  const list = S.data.terms.filter((t) => !q || (t.word + t.meaning).includes(q));
+  return `<input class="search" type="search" placeholder="用語を探す" value="${esc(S.search)}" data-act="search"><button class="btn primary" data-act="modal" data-type="term">＋ 用語を追加</button>` + list.map((t) => card(t.word, "📖", `<p>${esc(t.meaning)}</p>${t.when ? `<p class="small"><b>使う場面：</b>${esc(t.when)}</p>` : ""}${t.action ? `<p class="small"><b>どうする：</b>${esc(t.action)}</p>` : ""}`, `<button class="link" data-act="modal" data-type="term" data-id="${t.id}">編集</button>`)).join("");
+}
+function viewAreaNotes() {
+  return `<button class="btn primary" data-act="modal" data-type="areanote">＋ 注意ポイントを追加</button>` + (S.data.areaNotes.length ? S.data.areaNotes.slice().reverse().map((n) => card(n.title, "📍", `<p><span class="tag">${esc(n.category)}</span> ${esc(n.text)}</p><p class="muted small">${Fmt.day(n.date)}</p>`, `<button class="link" data-act="modal" data-type="areanote" data-id="${n.id}">編集</button>`)).join("") : card("", "", `<p class="muted">「このマンションは裏口から」「この道は夕方混む」など、エリアの注意点をメモできます。</p>`));
+}
+function viewTroubleHistory() {
+  const list = S.data.troubles.slice().sort((a, b) => T(b.date) - T(a.date));
+  return card(`トラブル（${list.length}）`, "🧯", list.length ? list.map((t) => `<div class="li ${t.resolved ? "done" : ""}"><button class="check" data-act="trouble-resolve" data-id="${t.id}">${t.resolved ? "✓" : ""}</button><span class="grow"><b>${esc(t.category)}</b> <span class="muted small">${Fmt.day(t.date)} ${Fmt.hm(t.date)}</span>${t.memo ? `<br><span class="small">${esc(t.memo)}</span>` : ""}</span><button class="x" data-act="trouble-del" data-id="${t.id}">×</button></div>`).join("") : `<p class="muted">「困った時」ボタンから開いた内容が記録されます。解決したら✓を付けましょう。</p>`);
+}
+function viewMisses() {
+  const list = S.data.misses.slice().sort((a, b) => T(b.date) - T(a.date));
+  const rep = repeatedMisses(S.data.misses);
+  return `<button class="btn primary" data-act="modal" data-type="miss">＋ ミスを記録</button>${rep.length ? card("くり返しているミス（14日）", "🔁", rep.map(([c, n]) => `<p>${esc(c)}：${n}回</p>`).join("")) : ""}` + card(`ミス記録（${list.length}）`, "✍️", list.length ? list.map((m) => `<div class="li"><span class="tag">${esc(m.category)}</span><span class="grow small">${esc(m.memo)}</span><span class="muted small">${Fmt.day(m.date)}</span><button class="x" data-act="miss-del" data-id="${m.id}">×</button></div>`).join("") : `<p class="muted">ミスを記録すると、くり返しているミスを知らせます。責めるためではなく、次に気をつけるための記録です。</p>`);
+}
+
+/* ================= 履歴 ================= */
+function viewHistoryRoute(r) {
+  if (r.page === "session") return viewSession(r.id);
+  if (r.page === "analysis") { S.pageTitle = "過去の分析"; return viewHistoryAnalysis(); }
+  if (r.page === "growth") { S.pageTitle = "成長の記録"; return viewGrowth(); }
+  if (r.page === "level") { S.pageTitle = "新人レベル・バッジ"; return viewLevel(); }
+  if (r.page === "weak") { S.pageTitle = "弱点ランキング"; return viewWeak(); }
+  if (r.page === "arealog") { S.pageTitle = "エリアごとの記録"; return viewAreaLog(); }
+  const list = S.data.sessions.slice().sort((a, b) => T(b.startTime) - T(a.startTime));
+  const lv = Growth.level(S.data), badges = Growth.badges(S.data);
+  let h = `<button class="row-btn hero" data-act="go" data-tab="history" data-page="analysis"><span class="tile sm" style="background:var(--accent)">📈</span><span class="grow"><b>過去の配達履歴を分析</b><br><span class="muted small">曜日・時間帯・便ごとのペース、荷物の量と時間、速かった日</span></span><span class="chev">›</span></button>`;
+  h += `<div class="links">
+    <button data-act="go" data-tab="history" data-page="level">${lv.emoji} ${lv.name}・バッジ ${badges.filter((b) => b.earned).length}/${badges.length}</button>
+    <button data-act="go" data-tab="history" data-page="growth">📈 成長の記録</button>
+    <button data-act="go" data-tab="history" data-page="weak">🎯 弱点ランキング</button>
+    <button data-act="go" data-tab="history" data-page="arealog">🗺️ エリアごとの記録</button></div>`;
+  const st = A.stats(S.data.sessions.filter((s) => s.finishedAt));
+  if (st) h += card("最近10便の平均", "📊", `<div class="minis">${mini("ペース", Fmt.num(st.pkg) + "個/時", "teal")}${mini("所要時間", st.avgHours ? Fmt.dur(st.avgHours * HOUR) : "-")}${mini("便数", S.data.sessions.length + "便")}</div>`);
+  h += card(`すべての便（${list.length}）`, "🗓️", list.length ? list.map(sessionRow).join("") : `<p class="muted">まだ記録がありません</p>`);
+  return h;
+}
+function viewSession(id) {
+  const s = findSession(id);
+  if (!s) return `<p>見つかりません</p>`;
+  S.pageTitle = `${Fmt.day(s.startTime)} ${s.trip}便`;
+  const f = forecastOf(s), rv = dayReview(s, S.data);
+  let h = card("まとめ", "📋", `<div class="minis">${mini("荷物", A.initial(s) + "個")}${mini("開始", Fmt.hm(s.startTime))}${mini("終了", s.finishedAt ? Fmt.hm(s.finishedAt) : "記録中")}${mini("所要時間", A.durationMin(s) ? Fmt.dur(A.durationMin(s) * 60000) : "-")}${mini("ペース", Fmt.num(A.sessionPace(s)) + "個/時", "teal")}${mini("ロスタイム", Math.round(A.lossMinutes(s)) + "分", "or")}</div>${s.memo ? `<p class="small">📝 ${esc(s.memo)}</p>` : ""}`, `<button class="link" data-act="modal" data-type="session" data-id="${s.id}">編集</button>`);
+  h += sessionAnalysis(s);
+  const bags = s.bags || [];
+  if (bags.length) h += card(`バッグ・溢れた荷物（${bags.length}）`, "🎒", bags.slice().sort((a, b) => a.overflow - b.overflow || a.from - b.from).map((b) => bagRow(b, s.id)).join(""));
+  if ((s.notes || []).length) h += card("目的地メモ", "📌", s.notes.slice().sort((a, b) => a.stop - b.stop).map((n) => noteRow(n, s, null)).join(""));
+  h += card("振り返り", "⭐", `${ratingAvg(s.rating) ? RATING_KEYS.map(([k, t]) => `<div class="li"><span class="grow">${t}</span><span class="stars">${stars(s.rating[k])}</span></div>`).join("") + (s.rating.comment ? `<p class="small">${esc(s.rating.comment)}</p>` : "") : `<p class="muted">まだ振り返りがありません</p>`}
+    <p class="b g">できていたこと</p><ul>${rv.good.map((g) => `<li>${esc(g)}</li>`).join("")}</ul>${rv.improve.length ? `<p class="b or">次に気をつけること</p><ul>${rv.improve.map((g) => `<li>${esc(g)}</li>`).join("")}</ul>` : ""}
+    <button class="btn" data-act="modal" data-type="review" data-id="${s.id}">振り返りをつける</button>`);
+  h += card("記録", "🗒️", snapList(s));
+  h += `<button class="btn danger" data-act="session-del" data-id="${s.id}">この便を削除</button>`;
+  void f;
+  return h;
+}
+function viewLevel() {
+  const lv = Growth.level(S.data), badges = Growth.badges(S.data);
+  return card("新人レベル", lv.emoji, `<h2>${lv.emoji} ${lv.name}</h2><div class="lv">${[0, 1, 2, 3].map((i) => `<i class="${i <= lv.level ? "on" : ""}"></i>`).join("")}</div><p class="muted small">🔰新人 → 🌱初級 → 🚚中級 → ⭐独り立ち（安全・正確さを速さより優先して判定）</p><p class="b">${lv.level < 3 ? "次のレベルまで" : ""}</p><ul>${lv.hints.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>`)
+    + card("内訳（0〜100）", "📊", lv.scores.map(([t, v]) => `<div class="score"><span>${esc(t)}</span><div class="bar"><i style="width:${v}%"></i></div><b>${v}</b></div>`).join(""))
+    + card(`バッジ（${badges.filter((b) => b.earned).length}／${badges.length}）`, "🏅", `<div class="badges">${badges.map((b) => `<div class="bdg ${b.earned ? "on" : ""}"><span>${b.emoji}</span><b>${esc(b.title)}</b><small>${esc(b.detail)}</small></div>`).join("")}</div>`);
+}
+function viewGrowth() {
+  const pts = HA.points(S.data.sessions);
+  if (!pts.length) return card("", "", `<p class="muted">記録がたまると、ペース・1個あたりの時間・ロスタイムの変化が見られます。</p>`);
+  const x0 = T(pts[0].date), xi = (d) => (T(d) - x0) / 86400e3, xm = Math.max(1, xi(pts.at(-1).date));
+  const ticks = [0, xm].map((v) => ({ v, label: Fmt.day(new Date(x0 + v * 86400e3)).replace(/\(.\)/, "") }));
+  const weekly = {};
+  for (const p of pts) { const w = Math.floor(xi(p.date) / 7); (weekly[w] ||= []).push(p); }
+  const wk = Object.entries(weekly).map(([w, l]) => ({ label: `${+w + 1}週目`, pace: avg(l.map((p) => p.pace)), sec: 3600 / avg(l.map((p) => p.pace)), loss: avg(l.map((p) => p.loss)) }));
+  return card("ペースの変化（個/時）", "📈", Chart.line({ series: [{ name: "ペース", color: "#127686", points: pts.map((p) => ({ x: xi(p.date), y: p.pace, tip: Fmt.day(p.date) })) }], xTicks: ticks, xMin: 0, xMax: xm }))
+    + card("週ごとの平均", "🗓️", `<div class="table"><div class="tr th"><span>週</span><span>個/時</span><span>1個あたり</span><span>ロス</span></div>${wk.map((w) => `<div class="tr"><span>${w.label}</span><span>${Fmt.num(w.pace)}</span><span>${Math.round(w.sec)}秒</span><span>${Math.round(w.loss)}分</span></div>`).join("")}</div>`)
+    + card("1個あたりの時間（秒）", "⏱️", Chart.bar({ items: wk.map((w) => ({ label: w.label, value: w.sec, color: "#30b0c7" })), values: true }) + `<p class="muted small">低いほど速くなっています。</p>`);
+}
+function viewWeak() {
+  const w = Growth.weaknesses(S.data);
+  return card("最近30日でよくあること", "🎯", w.length ? w.map(([k, v], i) => `<div class="score"><span>${i + 1}. ${esc(k)}</span><div class="bar"><i style="width:${Math.min(100, (v / w[0][1]) * 100)}%"></i></div></div>`).join("") + `<p class="muted small">ミス・トラブル・ロスタイムの記録から、多い順に並べています。上の項目の手順を「困った時」で見直すと効果的です。</p>` : `<p class="muted">ミス・トラブル・ロスタイムを記録すると、多い順に表示されます。</p>`);
+}
+function viewAreaLog() {
+  const logs = S.data.areaLogs.slice().sort((a, b) => T(b.date) - T(a.date));
+  const by = {};
+  for (const l of logs) (by[l.area] ||= []).push(l);
+  return `<button class="btn primary" data-act="modal" data-type="arealog">＋ エリアの記録を追加</button>` + (Object.keys(by).length ? Object.entries(by).map(([area, l]) => card(area, "🗺️", `<div class="minis">${mini("回数", l.length + "回")}${mini("平均ペース", Fmt.num(avg(l.map((x) => +x.pace).filter(Boolean))) + "個/時")}${mini("自己評価", Fmt.num(avg(l.map((x) => +x.rating).filter(Boolean))))}</div>${l.slice(0, 5).map((x) => `<div class="li"><span class="muted small">${Fmt.day(x.date)}</span><span class="grow small">${esc(x.memo)}</span><span class="stars">${stars(+x.rating)}</span><button class="x" data-act="arealog-del" data-id="${x.id}">×</button></div>`).join("")}`)).join("") : card("", "", `<p class="muted">担当したエリアごとに、ペースやメモを残せます。</p>`));
+}
+
+/* =========================================================
+   入力画面（シート）
+   ========================================================= */
+const sheet = (title, body, opts = {}) => `<div class="sheet-bg" data-act="${opts.noClose ? "" : "close"}"></div><div class="sheet ${opts.full ? "full" : ""}" role="dialog" aria-label="${esc(title)}"><div class="sheet-h"><b>${esc(title)}</b>${opts.noClose ? "" : `<button class="iconbtn" data-act="close" aria-label="閉じる">✕</button>`}</div><div class="sheet-b">${body}</div></div>`;
+const opt = (list, v) => list.map((x) => `<option ${x === v ? "selected" : ""}>${esc(x)}</option>`).join("");
+const timeVal = (d) => (d ? Fmt.inputTime(d) : "");
+
+function viewModal(m) {
+  const f = MODALS[m.type];
+  return f ? f(m) : "";
+}
+const MODALS = {
+  snap(m) {
+    const s = findSession(m.sid) || activeSession();
+    const sn = m.id ? s.snapshots.find((x) => x.id === m.id) : null;
+    const last = A.sorted(s).at(-1);
+    const p = m.prefill || {};
+    const v = (k, d) => (p[k] != null ? p[k] : sn ? sn[k] : d);
+    return sheet(sn ? "記録を編集" : "進捗を記録", `<form data-form="snap" data-sid="${s.id}" data-id="${sn ? sn.id : ""}" class="grid2">
+      ${p.summary ? `<p class="note span2">${esc(p.summary)}</p>` : ""}
+      <label>時刻<input type="time" name="time" value="${p.time ? Fmt.inputTime(p.time) : timeVal(sn ? sn.time : new Date())}" required></label>
+      <label>残りの荷物（個）<input type="number" name="packages" min="0" inputmode="numeric" required value="${esc(v("packages", last ? last.packages : ""))}"></label>
+      <label>残りの目的地（件）<input type="number" name="destinations" min="0" inputmode="numeric" value="${esc(v("destinations", last ? last.destinations : ""))}"></label>
+      <label>残りのロケーション<input type="number" name="locations" min="0" inputmode="numeric" value="${esc(v("locations", last ? last.locations : ""))}"></label>
+      <label>完了した目的地<input type="number" name="completed" min="0" inputmode="numeric" value="${esc(v("completed", ""))}"></label>
+      <label>前回からの休憩（分）<input type="number" name="breakMinutes" min="0" inputmode="numeric" value="${esc(sn ? sn.breakMinutes || 0 : 0)}"></label>
+      <label>自分の予想の終了時刻<input type="time" name="myEstimate" value="${timeVal(sn && sn.myEstimate)}"></label>
+      <label class="span2">メモ<input name="memo" value="${esc(sn ? sn.memo || "" : "")}"></label>
+      <button class="btn primary big span2" type="submit">保存</button>
+      ${sn ? `<button class="btn danger span2" type="button" data-act="snap-del" data-sid="${s.id}" data-id="${sn.id}">この記録を削除</button>` : ""}
+    </form>`);
+  },
+  bag(m) {
+    const s = findSession(m.sid), b = m.id ? s.bags.find((x) => x.id === m.id) : { code: "", color: "", number: "", from: "", to: "", overflow: false, size: "" };
+    return sheet(m.id ? "バッグを編集" : "バッグを追加", `<form data-form="bag" data-sid="${s.id}" data-id="${m.id || ""}" class="grid2">
+      <label>バッグの番号<input name="code" required value="${esc(b.code)}" placeholder="例：C12-2G" autocapitalize="characters"></label>
+      <label>種類<select name="overflow"><option value="0" ${!b.overflow ? "selected" : ""}>バッグ</option><option value="1" ${b.overflow ? "selected" : ""}>溢れた荷物</option></select></label>
+      <label>目的地 #から<input type="number" name="from" inputmode="numeric" value="${esc(b.from || "")}"></label>
+      <label>#まで<input type="number" name="to" inputmode="numeric" value="${esc(b.to || "")}"></label>
+      <label>色<select name="color">${opt(BAG_COLORS, b.color)}</select></label>
+      <label>番号（下4桁など）<input name="number" value="${esc(b.number)}" inputmode="numeric"></label>
+      <label class="span2">サイズ・メモ（溢れた荷物）<input name="size" value="${esc(b.size)}" placeholder="例：(M) ボックス"></label>
+      <button class="btn primary big span2" type="submit">保存</button>
+      ${m.id ? `<button class="btn danger span2" type="button" data-act="bag-del" data-sid="${s.id}" data-id="${b.id}">削除</button>` : ""}</form>`);
+  },
+  note(m) {
+    const s = findSession(m.sid), n = m.id ? s.notes.find((x) => x.id === m.id) : { stop: "", tag: "午前指定", text: "", deadline: null, placeId: "" };
+    return sheet(m.id ? "メモを編集" : "目的地メモ", `<form data-form="note" data-sid="${s.id}" data-id="${m.id || ""}" class="grid2">
+      <label>目的地の番号（#）<input type="number" name="stop" min="1" inputmode="numeric" required value="${esc(n.stop)}"></label>
+      <label>種類<select name="tag">${opt(STOP_TAGS, n.tag)}</select></label>
+      <label>締め切り（午前指定なら12:00）<input type="time" name="deadline" value="${n.deadline ? Fmt.inputTime(n.deadline) : ""}"></label>
+      <label>会社・店舗<select name="placeId"><option value="">なし</option>${S.data.places.map((p) => `<option value="${p.id}" ${p.id === n.placeId ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select></label>
+      <label class="span2">メモ<input name="text" value="${esc(n.text)}" placeholder="例：裏口から／ピンがずれている"></label>
+      <button class="btn primary big span2" type="submit">保存</button>
+      ${m.id ? `<button class="btn danger span2" type="button" data-act="note-del" data-sid="${s.id}" data-id="${n.id}">削除</button>` : ""}</form>`);
+  },
+  place(m) {
+    const p = m.id ? S.data.places.find((x) => x.id === m.id) : { name: "", kind: "会社", open: "", close: "", closedDays: [], breakText: "", note: "", address: "" };
+    return sheet(m.id ? "会社・店舗を編集" : "会社・店舗を追加", `<form data-form="place" data-id="${m.id || ""}" class="grid2">
+      <label class="span2">名前<input name="name" required value="${esc(p.name)}"></label>
+      <label>種類<select name="kind">${opt(PLACE_KINDS, p.kind)}</select></label>
+      <label>住所・目印<input name="address" value="${esc(p.address)}"></label>
+      <label>開店<input type="time" name="open" value="${esc(p.open)}"></label>
+      <label>閉店<input type="time" name="close" value="${esc(p.close)}"></label>
+      <fieldset class="span2"><legend>定休日</legend><div class="chips">${WD.map((w, i) => `<label class="chip"><input type="checkbox" name="cd" value="${i}" ${(p.closedDays || []).includes(i) ? "checked" : ""}>${w}</label>`).join("")}</div></fieldset>
+      <label class="span2">休憩・注意<input name="breakText" value="${esc(p.breakText)}" placeholder="例：12:00〜13:00 昼休み"></label>
+      <label class="span2">メモ<input name="note" value="${esc(p.note)}"></label>
+      <button class="btn primary big span2" type="submit">保存</button>
+      ${m.id ? `<button class="btn danger span2" type="button" data-act="place-del" data-id="${p.id}">削除</button>` : ""}</form>`);
+  },
+  topic(m) {
+    const t = m.id ? S.data.manuals.find((x) => x.id === m.id) : { title: "", icon: "📘", summary: "", steps: [], cautions: [], points: [], table: [], template: "" };
+    return sheet(m.id ? "項目を編集" : "項目を追加", `<form data-form="topic" data-id="${m.id || ""}">
+      <label>タイトル<input name="title" required value="${esc(t.title)}"></label>
+      <label>アイコン（絵文字1つ）<input name="icon" value="${esc(t.icon)}" maxlength="4"></label>
+      <label>どんな時の対応か<textarea name="summary" rows="2">${esc(t.summary)}</textarea></label>
+      <label>手順（1行に1つ。絵は文章から自動で選びます）<textarea name="steps" rows="6">${esc(t.steps.join("\n"))}</textarea></label>
+      <label>注意（1行に1つ）<textarea name="cautions" rows="3">${esc(t.cautions.join("\n"))}</textarea></label>
+      <label>ポイント（1行に1つ）<textarea name="points" rows="3">${esc(t.points.join("\n"))}</textarea></label>
+      <label>早見表（1行に「場所｜状況｜ステータス」）<textarea name="table" rows="4">${esc(t.table.map((r) => [r.place, r.situation, r.code].join("｜")).join("\n"))}</textarea></label>
+      <label>連絡文<textarea name="template" rows="3">${esc(t.template)}</textarea></label>
+      <button class="btn primary big" type="submit">保存</button></form>`, { full: true });
+  },
+  term(m) {
+    const t = m.id ? S.data.terms.find((x) => x.id === m.id) : { word: "", meaning: "", when: "", action: "" };
+    return sheet(m.id ? "用語を編集" : "用語を追加", `<form data-form="term" data-id="${m.id || ""}">
+      <label>用語<input name="word" required value="${esc(t.word)}"></label>
+      <label>意味<textarea name="meaning" rows="2" required>${esc(t.meaning)}</textarea></label>
+      <label>使う場面<textarea name="when" rows="2">${esc(t.when)}</textarea></label>
+      <label>どうする<textarea name="action" rows="2">${esc(t.action)}</textarea></label>
+      <button class="btn primary big" type="submit">保存</button>
+      ${m.id ? `<button class="btn danger" type="button" data-act="term-del" data-id="${t.id}">削除</button>` : ""}</form>`);
+  },
+  areanote(m) {
+    const n = m.id ? S.data.areaNotes.find((x) => x.id === m.id) : { title: "", category: "建物", text: "" };
+    return sheet("注意ポイント", `<form data-form="areanote" data-id="${m.id || ""}">
+      <label>場所・名前<input name="title" required value="${esc(n.title)}" placeholder="例：〇〇マンション"></label>
+      <label>種類<select name="category">${opt(AREA_CATS, n.category)}</select></label>
+      <label>内容<textarea name="text" rows="3">${esc(n.text)}</textarea></label>
+      <button class="btn primary big" type="submit">保存</button>
+      ${m.id ? `<button class="btn danger" type="button" data-act="areanote-del" data-id="${n.id}">削除</button>` : ""}</form>`);
+  },
+  arealog() {
+    const s = latestSession(S.trip);
+    return sheet("エリアの記録", `<form data-form="arealog" class="grid2">
+      <label class="span2">エリア名<input name="area" required list="areas" placeholder="例：〇〇町1丁目"><datalist id="areas">${[...new Set(S.data.areaLogs.map((l) => l.area))].map((a) => `<option value="${esc(a)}">`).join("")}</datalist></label>
+      <label>日付<input type="date" name="date" value="${Fmt.inputDate()}"></label>
+      <label>ペース（個/時）<input type="number" step="0.1" name="pace" value="${s && A.sessionPace(s) ? Fmt.num(A.sessionPace(s)) : ""}"></label>
+      <label>自己評価（1〜5）<input type="number" name="rating" min="1" max="5" value="3"></label>
+      <label class="span2">メモ<input name="memo"></label>
+      <button class="btn primary big span2" type="submit">保存</button></form>`);
+  },
+  miss() {
+    return sheet("ミスを記録", `<form data-form="miss"><p class="muted small">責めるためではなく、次に気をつけるための記録です。</p>
+      <label>種類<select name="category">${opt(MISS_CATS, "誤配")}</select></label>
+      <label>内容<textarea name="memo" rows="3" placeholder="何があったか、次はどうするか"></textarea></label>
+      <button class="btn primary big" type="submit">記録する</button></form>`);
+  },
+  review(m) {
+    const s = findSession(m.id), r = s.rating || {};
+    const rv = dayReview(s, S.data);
+    return sheet("今日の振り返り", `<div class="minis">${mini("配達", rv.delivered + "個")}${mini("ペース", Fmt.num(rv.pace) + "個/時")}${mini("1個あたり", rv.secPer ? Math.round(rv.secPer) + "秒" : "-")}${mini("ロス", Math.round(rv.lossMinutes) + "分")}${mini("ミス", rv.misses + "件")}${mini("トラブル", rv.troubles + "件")}</div>
+      <p class="b g">できていたこと</p><ul>${rv.good.map((g) => `<li>${esc(g)}</li>`).join("")}</ul>${rv.improve.length ? `<p class="b or">次に気をつけること</p><ul>${rv.improve.map((g) => `<li>${esc(g)}</li>`).join("")}</ul>` : ""}
+      <form data-form="review" data-id="${s.id}">${RATING_KEYS.map(([k, t]) => `<div class="li"><span class="grow">${t}</span><span class="starpick">${[1, 2, 3, 4, 5].map((n) => `<label><input type="radio" name="${k}" value="${n}" ${r[k] === n ? "checked" : ""}><span>★</span></label>`).join("")}</span></div>`).join("")}
+      <label>ひとこと<textarea name="comment" rows="2">${esc(r.comment || "")}</textarea></label>
+      <button class="btn primary big" type="submit">保存</button></form>`, { full: true });
+  },
+  contact() {
+    const s = activeSession(); if (!s) return sheet("連絡文", `<p>配達中の便がありません。</p>`);
+    const f = forecastOf(s);
+    return sheet("管理者への連絡文", ["遅延", "時間指定", "トラブル", "荷物"].map((k) => { const t = contactTemplate(k, s, f); return `<p class="b">${k}</p><pre class="tpl">${esc(t)}</pre><button class="btn" data-act="copy" data-text="${esc(t)}">コピー</button>`; }).join("<hr>"), { full: true });
+  },
+  trouble(m) {
+    if (m.cat) {
+      const kws = TROUBLE_KEYWORDS[m.cat] || [];
+      const topics = S.data.manuals.filter((t) => kws.some((k) => [t.title, t.summary, ...t.steps, ...t.table.map((r) => r.code + r.situation)].join(" ").includes(k)));
+      const terms = S.data.terms.filter((t) => kws.includes(t.word));
+      return sheet(m.cat, `<p class="alert blue">まず安全を確保してください。迷ったら自己判断せず、管理者に連絡しましょう。</p>
+        ${topics.map((t) => `<button class="row-btn" data-act="go" data-tab="trouble" data-page="topic" data-id="${t.id}"><span class="tile sm" style="background:var(--accent)">${esc(t.icon)}</span><span class="grow"><b>${esc(t.title)}</b></span><span class="chev">›</span></button>`).join("") || `<p class="muted">関係するマニュアルがありません。「困った時」から項目を追加できます。</p>`}
+        ${terms.length ? `<p class="b">関係する用語</p>${terms.map((t) => `<p class="small"><b>${esc(t.word)}</b>：${esc(t.meaning)}</p>`).join("")}` : ""}
+        <button class="btn" data-act="modal" data-type="contact">管理者への連絡文を見る</button>
+        <p class="muted small">このトラブルは「トラブル履歴」に記録しました。解決したら✓を付けてください。</p>`, { full: true });
+    }
+    return sheet("何に困っていますか？", `<div class="tgrid">${TROUBLE_CATS.map((c) => `<button data-act="trouble-cat" data-v="${c}">${esc(c)}</button>`).join("")}</div>`);
+  },
+  remaining() {
+    const s = activeSession(); if (!s) return "";
+    const f = forecastOf(s);
+    const left = f.eta ? T(f.eta) - Date.now() : null;
+    return sheet("残り時間モード", `<div class="bigmode"><p>終了予定</p><b>${Fmt.hm(f.eta)}</b><p class="teal">${left > 0 ? "あと " + Fmt.dur(left) : ""}</p><p>残り <b>${f.remainingPkg}</b> 個 ／ 次は <b>#${f.nextStop}</b></p></div><p class="muted small">運転中は画面を見ないでください。止まっている時に確認しましょう。</p>`, { full: true });
+  },
+  session(m) {
+    const s = findSession(m.id);
+    return sheet("便を編集", `<form data-form="session" data-id="${s.id}" class="grid2">
+      <label>便<select name="trip">${opt(["C1", "C2"], s.trip)}</select></label>
+      <label>日付<input type="date" name="date" value="${Fmt.inputDate(s.startTime)}"></label>
+      <label>開始<input type="time" name="start" value="${timeVal(s.startTime)}"></label>
+      <label>目標の終了<input type="time" name="target" value="${timeVal(s.targetEnd)}"></label>
+      <label>終了<input type="time" name="finish" value="${timeVal(s.finishedAt)}"></label>
+      <label class="span2">メモ<input name="memo" value="${esc(s.memo)}"></label>
+      <button class="btn primary big span2" type="submit">保存</button></form>`);
+  },
+  ocr(m) {
+    return sheet("スクショの読み取り", `<div class="center"><div class="spinner"></div><p>${esc(m.text || "読み取り中…")}</p><p class="muted small">画像は端末の中で読み取ります（外部に送信しません）。</p></div>`, { noClose: true });
+  },
+  bagimport(m) {
+    return sheet("バッグの読み取り結果", `<p>${m.bags.length}件のバッグ・溢れた荷物を読み取りました。</p>${m.bags.map((b) => `<div class="li"><b>${esc(b.code)}</b><span>${b.from ? "#" + b.from + "〜" + b.to : ""}</span><span class="muted">${b.overflow ? "溢れ " + esc(b.size) : esc(b.color)} ${esc(b.number)}</span></div>`).join("")}
+      <div class="row2"><button class="btn primary" data-act="bag-import" data-mode="replace">今のバッグと入れ替える</button><button class="btn" data-act="bag-import" data-mode="add">追加する</button></div>`);
+  },
+  imgview(m) {
+    const t = S.data.manuals.find((x) => x.id === m.id);
+    return sheet("画像", `<img class="full" src="${t.images[m.i]}" alt="マニュアルの画像">`, { full: true });
+  },
+  password() {
+    return sheet("パスワードを変える", `<form data-form="password"><label>新しいパスワード<input type="password" name="pw" minlength="8" required autocomplete="new-password"></label><label>確認<input type="password" name="pw2" minlength="8" required autocomplete="new-password"></label><button class="btn primary big" type="submit">変更する</button></form>`);
+  },
+  privacy() {
+    return sheet("プライバシーポリシー", `<p>配達データ分析（Web版、以下「本サービス」）は、次のとおり情報を扱います。</p><ol class="small">
+      <li>ログインIDとパスワード、利用者が入力した配達の記録（荷物の数・時刻・バッグ・メモ・会社や店舗の情報・マニュアルに追加した画像など）は、利用者が同じIDでどの端末からでも使えるように、データ保存サービス（Supabase）のサーバーに保存します。パスワードは暗号化（ハッシュ化）されて保存され、運営者も見ることはできません。</li>
+      <li>保存したデータは、そのIDでログインした本人だけが読み書きできるように設定しています。運営者が利用者のデータを販売・広告に使うことはありません。</li>
+      <li>スクリーンショットの文字の読み取りは、利用者の端末のブラウザの中で行い、画像そのものはサーバーに送りません。</li>
+      <li>広告、アクセス解析、トラッキングのツールは使用していません。</li>
+      <li>設定の「アカウントとデータを削除」で、サーバー上のデータとアカウントを削除できます。</li>
+      <li>お試しモードでは、データはそのブラウザの中にだけ保存され、サーバーには送られません。</li>
+      <li>本ポリシーを変更する場合は、このページでお知らせします。</li></ol>
+      <p class="small">お問い合わせ：kumachannel36@gmail.com ／ 運営：天然くま本舗</p>`, { full: true });
+  },
+  onboarding(m) {
+    const pages = [
+      ["📦", "配達データ分析へようこそ", "配達アプリの進捗（残りの荷物の数）を記録すると、あなた自身の過去のペースから終了時刻を予測します。"],
+      ["⏱️", "1時間に1回、記録するだけ", "「＋記録を追加」で残りの荷物の数を入れるか、配達アプリの画面のスクショを読み込みます。"],
+      ["🛟", "困った時はここ", "置き配できない・荷物が余った・通行止めなど、よくある困りごとの対応を図解で確認できます。"],
+      ["🦺", "安全第一で", "運転中は画面を見たり操作したりしないでください。記録は止まっている時に行いましょう。"]
+    ];
+    const [ic, t, d] = pages[m.step];
+    return sheet("はじめに", `<div class="onb"><div class="onb-ic">${ic}</div><h2>${t}</h2><p>${d}</p><div class="dots">${pages.map((_, i) => `<i class="${i === m.step ? "on" : ""}"></i>`).join("")}</div>
+      ${m.step < pages.length - 1 ? `<button class="btn primary big" data-act="onb-next">次へ</button>` : `<button class="btn primary big" data-act="onb-done">はじめる</button>${!S.data.sessions.length ? `<button class="btn" data-act="onb-demo">お試しデータで全部の機能を見てみる</button>` : ""}`}</div>`, { noClose: true });
+  },
+  settings() {
+    const st = S.data.settings;
+    const acct = S.local ? `<p class="note">お試しモードです。データはこのブラウザにだけ保存されています。</p><button class="btn" data-act="logout">ログイン画面に戻る</button>`
+      : `<p>ログイン中：<b>${esc(S.loginId || (S.user && S.user.user_metadata && S.user.user_metadata.login_id) || (S.user && S.user.email) || "")}</b></p>
+         <p class="muted small">データはサーバーに保存されています。別の端末でも同じIDとパスワードでログインすると、続きから使えます。</p>
+         <div class="row2"><button class="btn" data-act="modal" data-type="password">パスワードを変える</button><button class="btn" data-act="logout">ログアウト</button></div>`;
+    return sheet("設定", `
+      <h3>アカウント</h3>${acct}
+      <h3>予測</h3>
+      <form data-form="settings" class="grid2">
+        <label>過去の記録がない時のペース（個/時）<input type="number" name="defaultPkgPace" step="1" min="5" max="60" value="${st.defaultPkgPace}"></label>
+        <label>過去の実績をどれだけ信じるか（時間）<input type="number" name="priorHours" step="0.5" min="0.5" max="5" value="${st.priorHours}"></label>
+        <label>直近のペースの重み（0〜1）<input type="number" name="recentWeight" step="0.1" min="0" max="1" value="${st.recentWeight}"></label>
+        <label class="check-l span2"><input type="checkbox" name="countReturnPin" ${st.countReturnPin ? "checked" : ""}> 最後のセンター（倉庫）に戻るピンも目的地として数える</label>
+        <label class="check-l span2"><input type="checkbox" name="reminderOn" ${st.reminderOn ? "checked" : ""}> 記録のリマインダー（この画面を開いている間）</label>
+        <label>リマインダーの間隔（分）<input type="number" name="reminderMinutes" min="15" max="180" step="5" value="${st.reminderMinutes}"></label>
+        <button class="btn primary span2" type="submit">保存</button>
+      </form>
+      <h3>お試しデータ</h3>
+      <div class="row2"><button class="btn" data-act="demo-add">お試しデータを入れる</button><button class="btn" data-act="demo-remove">お試しデータを消す</button></div>
+      <button class="btn ghost" data-act="onb-replay">はじめの案内をもう一度見る</button>
+      <h3>データ</h3>
+      <div class="row2"><button class="btn" data-act="csv">CSVで書き出す</button><button class="btn" data-act="backup">バックアップを保存</button></div>
+      <label class="btn ghost filebtn">バックアップから戻す<input type="file" accept="application/json,.json" data-act="restore" hidden></label>
+      <h3>使い方</h3>
+      <ul class="small">
+        <li>「今日」で便を開始 → 1時間に1回、残りの荷物の数を記録します。</li>
+        <li>終了予定は「今回のペース」と「過去の自分のペース」を混ぜて計算します。記録が増えるほど正確になります。</li>
+        <li>止まった時間（渋滞・荷物探し）は「ロスタイム」を押すと、ペースの計算から外れます。</li>
+        <li>「バッグ・メモ」で午前指定・ラッシュ便・エラーピン、会社・店舗の営業時間をメモできます。</li>
+        <li>「グラフ」の「過去の分析」で、曜日・時間帯・便ごとの傾向が分かります。</li>
+      </ul>
+      <p><a href="#" data-act="privacy">プライバシーポリシー</a></p>
+      ${S.local ? "" : `<h3>危険な操作</h3><button class="btn danger" data-act="account-delete">アカウントとデータを削除</button>`}
+      <p class="muted small">配達データ分析 Web版 ／ 天然くま本舗</p>`, { full: true });
+  }
+};
+
+/* =========================================================
+   アシスタント（端末内の記録だけで答える）
+   ========================================================= */
+function viewAssistant() {
+  S.pageTitle = "アシスタント";
+  if (!S.chat.length) S.chat.push({ me: false, text: "こんにちは。配達の記録とマニュアルから答えます（外部のAIには送信しません）。\n例：「間に合う？」「なぜ遅い？」「UTAって何？」「オートロックで入れない」" });
+  return `<div class="chat">${S.chat.map((c) => `<div class="bubble ${c.me ? "me" : ""}">${esc(c.text).replace(/\n/g, "<br>")}${c.topic ? `<br><button class="link" data-act="go" data-tab="trouble" data-page="topic" data-id="${c.topic}">マニュアルを開く ›</button>` : ""}</div>`).join("")}</div>
+    <div class="chips">${["間に合う？", "なぜ遅い？", "今のペースは？", "荷物が余った", "オートロックで入れない"].map((q) => `<button class="chip" data-act="ask" data-v="${q}">${q}</button>`).join("")}</div>
+    <form data-form="ask" class="askbar"><input name="q" placeholder="質問を入力" autocomplete="off"><button class="btn primary" type="submit">送信</button></form>`;
+}
+function answer(q) {
+  const has = (arr) => arr.some((k) => q.includes(k));
+  const s = activeSession(), f = s ? forecastOf(s) : null;
+  const term = S.data.terms.find((t) => q.toUpperCase().includes(t.word.toUpperCase()));
+  if (term && has(["何", "意味", "とは", "って"])) return { text: `${term.word}：${term.meaning}${term.when ? "\n使う場面：" + term.when : ""}${term.action ? "\nどうする：" + term.action : ""}` };
+  if (has(["間に合", "終わる", "何時"])) {
+    if (!f || !f.hasData) return { text: "配達中の便の記録がまだありません。「今日」で残りの荷物の数を記録すると答えられます。" };
+    const m = A.margin(s, f);
+    let t = `終了予定は ${Fmt.hm(f.eta)} です（${f.method}）。`;
+    if (m) t += m.key === "tight" ? `\n目標（${Fmt.hm(s.targetEnd)}）より約${Math.round(m.diff)}分遅れる見込みです。早めに管理者へ相談しましょう。` : m.key === "caution" ? "\n目標ぎりぎりです。" : "\n目標に間に合うペースです。";
+    return { text: t };
+  }
+  if (has(["遅い", "遅れ", "なぜ", "どうして"])) {
+    if (!s) return { text: "配達中の便がありません。" };
+    const reasons = [], hist = f.historyPace;
+    if (hist && f.currentPace && f.currentPace < hist * 0.9) reasons.push(`今のペース（${Fmt.num(f.currentPace)}個/時）が、過去の平均（${Fmt.num(hist)}個/時）より低めです。`);
+    const loss = {}; for (const l of s.losses || []) if (l.reason !== "休憩" && l.start) loss[l.reason] = (loss[l.reason] || 0) + (T(l.end || Date.now()) - T(l.start)) / 60000;
+    const top = Object.entries(loss).sort((a, b) => b[1] - a[1])[0];
+    if (top && top[1] >= 5) reasons.push(`${top[0]}で約${Math.round(top[1])}分止まっています。`);
+    const ivs = A.intervals(s).filter((iv) => iv.hours >= 0.25);
+    if (ivs.length >= 2 && ivs.at(-1).per() < avg(ivs.map((iv) => iv.per())) * 0.8) reasons.push("直近1時間のペースが落ちています。マンションや会社が続くエリアかもしれません。");
+    return { text: reasons.length ? reasons.join("\n") + "\n安全第一で、焦らず進めましょう。" : "記録からは大きな遅れの原因は見つかりませんでした。ロスタイムを記録すると、原因が分かりやすくなります。" };
+  }
+  if (has(["ペース", "速さ"])) {
+    if (!f || !f.hasData) return { text: "記録がまだありません。" };
+    return { text: `予測に使っているペースは ${Fmt.num(f.pkgPace)}個/時 です。\n今回の実績：${Fmt.num(f.currentPace)}個/時、過去の平均：${f.historyPace ? Fmt.num(f.historyPace) + "個/時" : "まだなし"}` };
+  }
+  const words = ["入れない", "オートロック", "不在", "置き配", "余", "足りない", "不足", "誤配", "ロッカー", "宅配ボックス", "満杯", "連絡票", "ステータス", "通行止め", "規制", "イベント", "祭り", "工事"];
+  const hit = words.filter((w) => q.includes(w));
+  if (hit.length) {
+    const t = S.data.manuals.map((m) => ({ m, n: hit.filter((w) => [m.title, m.summary, ...m.steps, ...m.points].join(" ").includes(w)).length })).sort((a, b) => b.n - a.n)[0];
+    if (t && t.n) return { text: `「${t.m.title}」が参考になります。\n${t.m.summary}\n最初の手順：${t.m.steps[0] || ""}`, topic: t.m.id };
+  }
+  if (term) return { text: `${term.word}：${term.meaning}` };
+  return { text: "うまく答えられませんでした。「間に合う？」「なぜ遅い？」「用語の名前」「困っている状況（例：オートロック）」で聞いてみてください。" };
+}
+
+/* =========================================================
+   お試しデータ
+   ========================================================= */
+function demoData() {
+  const out = [], now = new Date();
+  const rnd = (seed) => { let x = Math.sin(seed) * 10000; return x - Math.floor(x); };
+  for (let d = 8; d >= 1; d--) {
+    for (const trip of ["C1", "C2"]) {
+      if (trip === "C2" && d % 3 === 0) continue;
+      const seed = d * 7 + (trip === "C2" ? 3 : 0);
+      const day = startOfDay(new Date(now.getTime() - d * 86400e3));
+      const start = new Date(day); start.setHours(trip === "C1" ? 8 : 14, trip === "C1" ? 30 : 0);
+      const total = trip === "C1" ? 100 + Math.round(rnd(seed) * 30) : 40 + Math.round(rnd(seed) * 15);
+      const dest = Math.round(total * 0.68);
+      const pace = 16 + rnd(seed + 1) * 5;
+      const s = { id: uid(), demo: true, date: iso(day), trip, startTime: iso(start), targetEnd: iso(new Date(start.getTime() + (total / 18) * HOUR)), snapshots: [], bags: [], notes: [], losses: [], memo: "お試しデータ", rating: { sorting: 3 + (seed % 3), time: 3, trouble: 4, pace: 3, safety: 4 + (seed % 2) } };
+      let left = total, t = start.getTime(), k = 0;
+      while (left > 0) {
+        const p = k === 0 ? pace * 0.7 : pace * (0.85 + rnd(seed + k) * 0.3);
+        s.snapshots.push({ id: uid(), time: iso(t), packages: left, destinations: Math.round((left / total) * dest) + 1, locations: Math.round((left / total) * dest * 0.8), breakMinutes: 0, appEstimate: k ? iso(t + (left / pace) * HOUR) : null });
+        t += HOUR; left = Math.max(0, Math.round(left - p)); k++;
+      }
+      s.finishedAt = iso(t - HOUR + (s.snapshots.at(-1).packages / pace) * HOUR);
+      s.losses.push({ id: uid(), reason: ["渋滞", "荷物探し", "建物で迷った"][seed % 3], start: iso(start.getTime() + 2 * HOUR), end: iso(start.getTime() + 2 * HOUR + (5 + (seed % 10)) * 60000) });
+      out.push(s);
+    }
+  }
+  // 今日の配達中の便
+  const start = new Date(now.getTime() - 3.2 * HOUR);
+  const s = { id: uid(), demo: true, date: iso(startOfDay(now)), trip: "C1", startTime: iso(start), targetEnd: iso(new Date(start.getTime() + 6.5 * HOUR)), snapshots: [], notes: [], losses: [], memo: "お試しデータ", rating: {}, bags: [] };
+  [[0, 118, 80, 64], [1, 104, 71, 57], [2, 86, 58, 47], [3, 66, 45, 36]].forEach(([h, p, d, l]) => s.snapshots.push({ id: uid(), time: iso(start.getTime() + h * HOUR), packages: p, destinations: d, locations: l, completed: 80 - d, breakMinutes: 0 }));
+  s.bags = [["C12-1A", 1, 12, "黒", "4021"], ["C12-2B", 13, 24, "緑", "9415"], ["C12-3C", 25, 40, "青", "2208"], ["C12-4D", 41, 58, "黄", "7310"], ["C12-5E", 59, 80, "紫", "1187"]].map(([code, from, to, color, number]) => ({ id: uid(), code, from, to, color, number, overflow: false, size: "", done: from < 30 }));
+  s.bags.push({ id: uid(), code: "C12-9Z", from: 44, to: 52, color: "", number: "5530", overflow: true, size: "(M) ボックス", done: false });
+  const endH1 = Math.min(23, now.getHours() + 1);
+  s.notes = [
+    { id: uid(), stop: 38, tag: "午前指定", text: "（例）インターホン2回", deadline: iso(atTime(now, `${endH1}:00`)), done: false },
+    { id: uid(), stop: 47, tag: "エラーピン", text: "（例）ピンが道路の反対側", done: false },
+    { id: uid(), stop: 55, tag: "会社・店舗", text: "（例）受付は2階", done: false }
+  ];
+  out.push(s);
+  return out;
+}
+
+/* =========================================================
+   操作
+   ========================================================= */
+const ACT = {
+  go(el) { const d = el.dataset; S.search = ""; if (d.page) S.route = { tab: d.tab, page: d.page, id: d.id || null, parent: S.route.tab === d.tab ? S.route.page : null, parentId: S.route.tab === d.tab ? S.route.id : null }; else S.route = { tab: d.tab, page: null, id: null }; S.modal = null; render(); window.scrollTo(0, 0); },
+  back,
+  close() { S.modal = null; render(); },
+  settings() { S.modal = { type: "settings" }; render(); },
+  privacy(el, ev) { ev.preventDefault(); S.modal = { type: "privacy" }; render(); },
+  modal(el) { const d = el.dataset; S.modal = { type: d.type, id: d.id || null, sid: d.sid || null }; render(); },
+  trip(el) { S.trip = el.dataset.v; render(); },
+  seg(el) { S.seg[el.dataset.k] = el.dataset.v; render(); },
+  authmode(el) { S.authMode = el.dataset.v; S.authError = null; render(); },
+  local() { startLocal(); },
+  async logout() {
+    if (!await askConfirm(S.local ? "ログイン画面に戻りますか？（お試しデータはこのブラウザに残ります）" : "ログアウトしますか？（データはサーバーに残ります）")) return;
+    if (!S.local) { await flush(); await Cloud.signOut(); try { localStorage.removeItem(cacheKey()); } catch {} }
+    S.data = null; S.user = null; S.modal = null; S.mode = "auth"; S.authMode = "login"; render();
+  },
+  async "account-delete"() {
+    if (await askText("アカウントとサーバー上のデータをすべて削除します。元に戻せません。\n確認のため「削除」と入力してください。", "", { danger: true, ok: "削除する" }) !== "削除") return;
+    try { await Cloud.deleteAccount(); try { localStorage.removeItem(cacheKey()); } catch {} S.data = null; S.modal = null; S.mode = "auth"; S.authError = "アカウントを削除しました。"; render(); }
+    catch (e) { toast("削除できませんでした：" + authErrorText(e)); }
+  },
+  /* 便 */
+  "snap-new"() { S.modal = { type: "snap", sid: activeSession().id }; render(); },
+  "snap-edit"(el) { const s = S.route.page === "session" ? findSession(S.route.id) : activeSession(); S.modal = { type: "snap", sid: s.id, id: el.dataset.id }; render(); },
+  async "snap-del"(el) { if (!await askConfirm("この記録を削除しますか？")) return; S.modal = null; mutate(() => { const s = findSession(el.dataset.sid); s.snapshots = s.snapshots.filter((x) => x.id !== el.dataset.id); }); },
+  async finish() {
+    const s = activeSession(); const t = await askText("終了した時刻", Fmt.inputTime(), { type: "time", ok: "終了する" });
+    if (t == null) return; const d = atTime(s.startTime, t) || new Date();
+    if (T(d) < T(s.startTime)) d.setDate(d.getDate() + 1);
+    mutate(() => { s.finishedAt = iso(d); (s.losses || []).forEach((l) => { if (!l.end) l.end = iso(d); }); });
+    S.modal = { type: "review", id: s.id }; render();
+  },
+  reopen() { const s = activeSession(); mutate(() => { s.finishedAt = null; }); },
+  async "session-del"(el) { if (!await askConfirm("この便の記録をすべて削除しますか？")) return; mutate((d) => { d.sessions = d.sessions.filter((s) => s.id !== el.dataset.id); }); go("history"); },
+  "loss-start"(el) { const s = activeSession(); mutate(() => { s.losses.push({ id: uid(), reason: el.dataset.v, start: iso(new Date()), end: null }); }); toast(`${el.dataset.v}の計測を始めました`); },
+  "loss-stop"() { const s = activeSession(); mutate(() => { const l = s.losses.find((x) => !x.end); if (l) l.end = iso(new Date()); }); },
+  "loss-del"(el) { const s = activeSession(); mutate(() => { s.losses = s.losses.filter((x) => x.id !== el.dataset.id); }); },
+  speak() {
+    const s = activeSession(); const f = s && forecastOf(s);
+    if (!f || !f.hasData) { toast("記録がまだありません"); return; }
+    const t = f.isDone ? "おつかれさまでした。" : `終了予定は${Fmt.hm(f.eta).replace(":", "時")}分。残り${f.remainingPkg}個。次は${f.nextStop}番です。`;
+    try { const u = new SpeechSynthesisUtterance(t); u.lang = "ja-JP"; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch { toast(t); }
+  },
+  /* バッグ・メモ */
+  "bag-done"(el) { mutate(() => { const b = findSession(el.dataset.sid).bags.find((x) => x.id === el.dataset.id); b.done = !b.done; }); },
+  "bag-del"(el) { S.modal = null; mutate(() => { const s = findSession(el.dataset.sid); s.bags = s.bags.filter((x) => x.id !== el.dataset.id); }); },
+  "bag-import"(el) {
+    const m = S.modal, s = findSession(m.sid);
+    mutate(() => {
+      if (el.dataset.mode === "replace") s.bags = m.bags;
+      else for (const b of m.bags) if (!s.bags.some((x) => OCR.bagKey(x) === OCR.bagKey(b))) s.bags.push(b);
+    });
+    S.modal = null; render(); toast("バッグを保存しました");
+  },
+  "note-done"(el) { mutate(() => { const n = findSession(el.dataset.sid).notes.find((x) => x.id === el.dataset.id); n.done = !n.done; }); },
+  "note-del"(el) { S.modal = null; mutate(() => { const s = findSession(el.dataset.sid); s.notes = s.notes.filter((x) => x.id !== el.dataset.id); }); },
+  async "place-del"(el) { if (!await askConfirm("削除しますか？")) return; S.modal = null; mutate((d) => { d.places = d.places.filter((x) => x.id !== el.dataset.id); }); },
+  /* 困った時 */
+  "trouble-sheet"() { S.modal = { type: "trouble" }; render(); },
+  "trouble-cat"(el) {
+    const cat = el.dataset.v, s = activeSession();
+    mutate((d) => { d.troubles.push({ id: uid(), date: iso(new Date()), category: cat, memo: "", resolved: false, sessionId: s ? s.id : null }); });
+    S.modal = { type: "trouble", cat }; render();
+  },
+  "trouble-resolve"(el) { mutate((d) => { const t = d.troubles.find((x) => x.id === el.dataset.id); t.resolved = !t.resolved; }); },
+  "trouble-del"(el) { mutate((d) => { d.troubles = d.troubles.filter((x) => x.id !== el.dataset.id); }); },
+  "miss-del"(el) { mutate((d) => { d.misses = d.misses.filter((x) => x.id !== el.dataset.id); }); },
+  async "term-del"(el) { if (!await askConfirm("削除しますか？")) return; S.modal = null; mutate((d) => { d.terms = d.terms.filter((x) => x.id !== el.dataset.id); }); },
+  "areanote-del"(el) { S.modal = null; mutate((d) => { d.areaNotes = d.areaNotes.filter((x) => x.id !== el.dataset.id); }); },
+  "arealog-del"(el) { mutate((d) => { d.areaLogs = d.areaLogs.filter((x) => x.id !== el.dataset.id); }); },
+  async "topic-del"(el) { if (!await askConfirm("この項目を削除しますか？")) return; mutate((d) => { d.manuals = d.manuals.filter((x) => x.id !== el.dataset.id); }); go("trouble"); },
+  "manual-restore"() {
+    let n = 0;
+    mutate((d) => { for (const m of DEFAULT_MANUALS) if (!d.manuals.some((x) => x.title === m.title)) { d.manuals.push({ id: uid(), table: [], cautions: [], points: [], template: "", images: [], ...JSON.parse(JSON.stringify(m)) }); n++; } });
+    toast(n ? `${n}件の項目を戻しました` : "初期の項目はすべてあります");
+  },
+  async "img-del"(el) { if (!await askConfirm("この画像を削除しますか？")) return; mutate((d) => { d.manuals.find((x) => x.id === el.dataset.id).images.splice(+el.dataset.i, 1); }); },
+  "img-view"(el) { S.modal = { type: "imgview", id: el.dataset.id, i: +el.dataset.src }; render(); },
+  copy(el) {
+    const t = el.dataset.text;
+    (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast("コピーしました"), () => { const ta = document.createElement("textarea"); ta.value = t; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); toast("コピーしました"); } catch { toast("コピーできませんでした"); } ta.remove(); });
+  },
+  ask(el) { askQ(el.dataset.v); },
+  /* お試し・案内 */
+  "demo-add"() { if (S.data.sessions.some((s) => s.demo)) { toast("お試しデータはすでに入っています"); return; } mutate((d) => { d.sessions.push(...demoData()); }); S.modal = null; S.trip = "C1"; go("today"); toast("お試しデータを入れました"); },
+  "demo-remove"() { mutate((d) => { d.sessions = d.sessions.filter((s) => !s.demo); }); toast("お試しデータを消しました"); },
+  "onb-next"() { S.modal.step++; render(); },
+  "onb-done"() { S.modal = null; mutate((d) => { d.settings.onboarded = true; }); },
+  "onb-demo"() { mutate((d) => { d.settings.onboarded = true; }); ACT["demo-add"](); },
+  "onb-replay"() { S.modal = { type: "onboarding", step: 0 }; render(); },
+  /* データ */
+  csv() {
+    const rows = [["日付", "便", "記録時刻", "残り荷物", "残り目的地", "残りロケーション", "完了目的地", "休憩分", "アプリ予測", "自分の予想", "開始", "終了", "目標", "メモ"]];
+    for (const s of S.data.sessions.slice().sort((a, b) => T(a.startTime) - T(b.startTime))) for (const sn of A.sorted(s)) rows.push([Fmt.ymd(s.startTime), s.trip, Fmt.csv(sn.time), sn.packages, sn.destinations, sn.locations ?? "", sn.completed ?? "", sn.breakMinutes || 0, Fmt.csv(sn.appEstimate), Fmt.csv(sn.myEstimate), Fmt.csv(s.startTime), Fmt.csv(s.finishedAt), Fmt.csv(s.targetEnd), sn.memo || ""]);
+    download("配達データ.csv", "﻿" + rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n"), "text/csv");
+  },
+  backup() { download(`配達データ分析_バックアップ_${Fmt.ymd(new Date()).replace(/\//g, "")}.json`, JSON.stringify(S.data), "application/json"); }
+};
+/* ---------- 確認画面（ブラウザの確認ダイアログの代わり） ---------- */
+function askDialog(text, opts = {}) {
+  return new Promise((resolve) => {
+    const old = document.getElementById("dlg"); if (old) old.remove();
+    const d = document.createElement("div"); d.id = "dlg";
+    d.innerHTML = `<div class="sheet-bg" style="z-index:70"></div><div class="dlg" role="alertdialog"><p>${esc(text).replace(/\n/g, "<br>")}</p>${opts.input ? `<input id="dlg-in" type="${opts.type || "text"}" value="${esc(opts.value || "")}">` : ""}<div class="row2"><button class="btn" id="dlg-no">${esc(opts.cancel || "やめる")}</button><button class="btn ${opts.danger ? "danger" : "primary"}" id="dlg-ok">${esc(opts.ok || "OK")}</button></div></div>`;
+    document.body.appendChild(d);
+    const inp = d.querySelector("#dlg-in"); (inp || d.querySelector("#dlg-ok")).focus();
+    const done = (v) => { d.remove(); resolve(v); };
+    d.querySelector("#dlg-no").onclick = () => done(opts.input ? null : false);
+    d.querySelector("#dlg-ok").onclick = () => done(opts.input ? inp.value : true);
+    if (inp) inp.onkeydown = (e) => { if (e.key === "Enter") done(inp.value); };
+  });
+}
+const askConfirm = (text, opts) => askDialog(text, { ok: "はい", ...opts, danger: true });
+const askText = (text, value, opts) => askDialog(text, { ...opts, input: true, value });
+function download(name, text, type) {
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+function askQ(q) { if (!q || !q.trim()) return; S.chat.push({ me: true, text: q }); S.chat.push({ me: false, ...answer(q) }); render(); setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 30); }
+
+/* ---------- フォーム ---------- */
+const num = (v) => (v === "" || v == null ? null : Number(v));
+const lines = (v) => String(v || "").split("\n").map((x) => x.trim()).filter(Boolean);
+const FORM = {
+  auth: submitAuth,
+  ask(fd, form) { askQ(fd.get("q")); },
+  start(fd) {
+    const day = new Date(fd.get("date") + "T00:00:00");
+    const start = atTime(day, fd.get("start"));
+    let target = atTime(day, fd.get("target")); if (target && T(target) <= T(start)) target.setDate(target.getDate() + 1);
+    const s = { id: uid(), date: iso(day), trip: S.trip, startTime: iso(start), targetEnd: target ? iso(target) : null, snapshots: [], bags: [], notes: [], losses: [], rating: {}, memo: "", finishedAt: null };
+    if (fd.get("pkg") !== "") s.snapshots.push({ id: uid(), time: iso(start), packages: +fd.get("pkg"), destinations: num(fd.get("dest")) ?? Math.round(+fd.get("pkg") * 0.7), locations: num(fd.get("loc")) ?? 0, breakMinutes: 0 });
+    if (S._pendingOcr) { const p = S._pendingOcr; S._pendingOcr = null; if (!s.snapshots.length && p.packages != null) s.snapshots.push({ id: uid(), time: iso(p.time || start), packages: p.packages, destinations: p.destinations ?? p.undelivered ?? 0, locations: p.locations ?? 0, completed: p.completed ?? null, breakMinutes: 0 }); if (p.bags && p.bags.length) s.bags = p.bags; }
+    mutate((d) => d.sessions.push(s));
+    toast(`${S.trip}便を開始しました`);
+  },
+  snap(fd, form) {
+    const s = findSession(form.dataset.sid), id = form.dataset.id;
+    const base = A.sorted(s).at(-1) ? new Date(A.sorted(s).at(-1).time) : new Date(s.startTime);
+    let time = atTime(id ? s.snapshots.find((x) => x.id === id).time : new Date(), fd.get("time"));
+    if (!id && T(time) < T(s.startTime) - 6 * HOUR) time.setDate(time.getDate() + 1);
+    void base;
+    const v = { time: iso(time), packages: +fd.get("packages"), destinations: num(fd.get("destinations")) ?? 0, locations: num(fd.get("locations")) ?? 0, completed: num(fd.get("completed")), breakMinutes: num(fd.get("breakMinutes")) || 0, myEstimate: fd.get("myEstimate") ? iso(atTime(time, fd.get("myEstimate"))) : null, memo: fd.get("memo") || "" };
+    S.modal = null;
+    mutate(() => {
+      if (id) Object.assign(s.snapshots.find((x) => x.id === id), v);
+      else {
+        const tmp = { ...s, snapshots: [...s.snapshots, { id: "tmp", ...v }] };
+        const f = A.forecast(tmp, S.data.sessions, S.data.settings);
+        s.snapshots.push({ id: uid(), ...v, appEstimate: f.eta && !f.isDone ? iso(f.eta) : null });
+        if (v.packages <= 0 && !s.finishedAt) s.finishedAt = v.time;
+      }
+    });
+    toast("記録しました");
+    const s2 = findSession(s.id); if (s2.finishedAt && !id) { S.modal = { type: "review", id: s2.id }; render(); }
+  },
+  bag(fd, form) {
+    const s = findSession(form.dataset.sid), id = form.dataset.id;
+    const v = { code: fd.get("code").trim().toUpperCase(), overflow: fd.get("overflow") === "1", from: num(fd.get("from")) || 0, to: num(fd.get("to")) || num(fd.get("from")) || 0, color: fd.get("color"), number: fd.get("number"), size: fd.get("size") };
+    S.modal = null; mutate(() => { if (id) Object.assign(s.bags.find((x) => x.id === id), v); else s.bags.push({ id: uid(), done: false, ...v }); });
+  },
+  note(fd, form) {
+    const s = findSession(form.dataset.sid), id = form.dataset.id;
+    const dl = fd.get("deadline") ? atTime(s.startTime, fd.get("deadline")) : fd.get("tag") === "午前指定" ? atTime(s.startTime, "12:00") : null;
+    const v = { stop: +fd.get("stop"), tag: fd.get("tag"), text: fd.get("text"), deadline: dl ? iso(dl) : null, placeId: fd.get("placeId") || null };
+    S.modal = null; mutate(() => { if (id) Object.assign(s.notes.find((x) => x.id === id), v); else s.notes.push({ id: uid(), done: false, ...v }); });
+  },
+  place(fd, form) {
+    const id = form.dataset.id;
+    const v = { name: fd.get("name").trim(), kind: fd.get("kind"), address: fd.get("address"), open: fd.get("open"), close: fd.get("close"), closedDays: fd.getAll("cd").map(Number), breakText: fd.get("breakText"), note: fd.get("note") };
+    S.modal = null; mutate((d) => { if (id) Object.assign(d.places.find((x) => x.id === id), v); else d.places.push({ id: uid(), ...v }); });
+  },
+  topic(fd, form) {
+    const id = form.dataset.id;
+    const v = { title: fd.get("title").trim(), icon: fd.get("icon").trim() || "📘", summary: fd.get("summary").trim(), steps: lines(fd.get("steps")), cautions: lines(fd.get("cautions")), points: lines(fd.get("points")), template: fd.get("template").trim(),
+      table: lines(fd.get("table")).map((l) => l.split(/[｜|]/).map((x) => x.trim())).filter((a) => a.length >= 2).map(([place, situation, code]) => ({ place, situation, code: code || "" })) };
+    let newId = id;
+    S.modal = null; mutate((d) => { if (id) Object.assign(d.manuals.find((x) => x.id === id), v); else { newId = uid(); d.manuals.push({ id: newId, images: [], ...v }); } });
+    go("trouble", "topic", newId);
+  },
+  term(fd, form) { const id = form.dataset.id; const v = { word: fd.get("word").trim(), meaning: fd.get("meaning").trim(), when: fd.get("when").trim(), action: fd.get("action").trim() }; S.modal = null; mutate((d) => { if (id) Object.assign(d.terms.find((x) => x.id === id), v); else d.terms.push({ id: uid(), ...v }); }); },
+  areanote(fd, form) { const id = form.dataset.id; const v = { title: fd.get("title").trim(), category: fd.get("category"), text: fd.get("text") }; S.modal = null; mutate((d) => { if (id) Object.assign(d.areaNotes.find((x) => x.id === id), v); else d.areaNotes.push({ id: uid(), date: iso(new Date()), ...v }); }); },
+  arealog(fd) { S.modal = null; mutate((d) => d.areaLogs.push({ id: uid(), area: fd.get("area").trim(), date: iso(new Date(fd.get("date") + "T12:00:00")), pace: num(fd.get("pace")), rating: num(fd.get("rating")), memo: fd.get("memo") })); },
+  miss(fd) { const s = activeSession(); S.modal = null; mutate((d) => d.misses.push({ id: uid(), date: iso(new Date()), category: fd.get("category"), memo: fd.get("memo"), sessionId: s ? s.id : null })); toast("記録しました。次に気をつけましょう"); },
+  review(fd, form) {
+    const s = findSession(form.dataset.id), r = { comment: fd.get("comment") || "" };
+    for (const [k] of RATING_KEYS) r[k] = num(fd.get(k)) || 0;
+    S.modal = null; mutate(() => { s.rating = r; }); toast("振り返りを保存しました");
+  },
+  session(fd, form) {
+    const s = findSession(form.dataset.id), day = new Date(fd.get("date") + "T00:00:00");
+    const st = atTime(day, fd.get("start")), tg = atTime(day, fd.get("target")), fi = atTime(day, fd.get("finish"));
+    if (tg && T(tg) < T(st)) tg.setDate(tg.getDate() + 1); if (fi && T(fi) < T(st)) fi.setDate(fi.getDate() + 1);
+    S.modal = null; mutate(() => { Object.assign(s, { trip: fd.get("trip"), date: iso(day), startTime: iso(st), targetEnd: tg ? iso(tg) : null, finishedAt: fi ? iso(fi) : null, memo: fd.get("memo") }); });
+  },
+  settings(fd) {
+    mutate((d) => Object.assign(d.settings, { defaultPkgPace: clamp(num(fd.get("defaultPkgPace")) || 20, 5, 60), priorHours: clamp(num(fd.get("priorHours")) || 1.5, 0.5, 5), recentWeight: clamp(num(fd.get("recentWeight")) ?? 0.5, 0, 1), countReturnPin: !!fd.get("countReturnPin"), reminderOn: !!fd.get("reminderOn"), reminderMinutes: clamp(num(fd.get("reminderMinutes")) || 60, 15, 180) }));
+    if (fd.get("reminderOn") && "Notification" in window && Notification.permission === "default") Notification.requestPermission();
+    toast("設定を保存しました");
+  },
+  async password(fd) {
+    const a = fd.get("pw"), b = fd.get("pw2");
+    if (a !== b) { toast("確認用のパスワードが一致しません"); return; }
+    try { await Cloud.changePassword(a); S.modal = null; render(); toast("パスワードを変更しました"); } catch (e) { toast(authErrorText(e)); }
+  }
+};
+
+/* ---------- 画像・スクショ ---------- */
+async function shrinkImage(file, max = 900, q = 0.6) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((ok, ng) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ng; i.src = url; });
+    const k = Math.min(1, max / Math.max(img.width, img.height));
+    const c = document.createElement("canvas"); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL("image/jpeg", q);
+  } finally { URL.revokeObjectURL(url); }
+}
+async function readShots(files) {
+  const results = [];
+  for (const [i, f] of [...files].entries()) {
+    const ls = await OCR.read(f, (t) => { S.modal = { type: "ocr", text: `${i + 1}/${files.length}枚目：${t}` }; render(); });
+    results.push(OCR.parse(ls, new Date()));
+  }
+  const r = { bags: [] };
+  for (const p of results) {
+    if (p.time && (!r.time || T(p.time) > T(r.time))) r.time = p.time;
+    for (const k of ["destinations", "locations", "packages", "completed", "undelivered"]) if (r[k] == null && p[k] != null) r[k] = p[k];
+    for (const b of p.bags) if (!r.bags.some((x) => OCR.bagKey(x) === OCR.bagKey(b))) r.bags.push(b);
+  }
+  if (r.destinations == null && r.undelivered != null) r.destinations = r.undelivered;
+  const parts = [];
+  if (r.packages != null) parts.push("荷物" + r.packages); if (r.destinations != null) parts.push("目的地" + r.destinations); if (r.locations != null) parts.push("ロケーション" + r.locations); if (r.bags.length) parts.push("バッグ" + r.bags.length + "件");
+  r.summary = parts.length ? "読み取り結果：" + parts.join("・") + "（違っていたら直してください）" : "数字を読み取れませんでした。手入力してください。";
+  return r;
+}
+const CHANGE = {
+  async "ocr-snap"(el) {
+    const files = el.files; if (!files.length) return;
+    const s = activeSession();
+    try { S.modal = { type: "ocr" }; render(); const r = await readShots(files); if (r.bags.length) mutate(() => { for (const b of r.bags) if (!s.bags.some((x) => OCR.bagKey(x) === OCR.bagKey(b))) s.bags.push(b); }); S.modal = { type: "snap", sid: s.id, prefill: r }; render(); }
+    catch (e) { S.modal = { type: "snap", sid: s.id, prefill: { summary: "読み取りに失敗しました（" + e.message + "）。手入力してください。" } }; render(); }
+  },
+  async "ocr-start"(el) {
+    const files = el.files; if (!files.length) return;
+    try { S.modal = { type: "ocr" }; render(); const r = await readShots(files); S._pendingOcr = r; S.modal = null; render(); const form = $('form[data-form="start"]'); if (form) { if (r.packages != null) form.pkg.value = r.packages; if (r.destinations != null) form.dest.value = r.destinations; if (r.locations != null) form.loc.value = r.locations; if (r.time) form.start.value = Fmt.inputTime(r.time); } toast(r.summary); }
+    catch (e) { S.modal = null; render(); toast("読み取りに失敗しました。手入力してください。"); }
+  },
+  async "ocr-bags"(el) {
+    const files = el.files; if (!files.length) return; const sid = el.dataset.sid;
+    try { S.modal = { type: "ocr" }; render(); const r = await readShots(files); S.modal = r.bags.length ? { type: "bagimport", sid, bags: r.bags } : null; render(); if (!r.bags.length) toast("バッグを読み取れませんでした。手入力してください。"); }
+    catch (e) { S.modal = null; render(); toast("読み取りに失敗しました"); }
+  },
+  async "img-add"(el) {
+    const f = el.files[0]; if (!f) return; const m = S.data.manuals.find((x) => x.id === el.dataset.id);
+    if (m.images.length >= 4) { toast("画像は1項目に4枚までです"); return; }
+    try { const src = await shrinkImage(f); mutate(() => m.images.push(src)); toast("画像を追加しました"); } catch { toast("画像を読み込めませんでした"); }
+  },
+  async restore(el) {
+    const f = el.files[0]; if (!f) return;
+    try { const d = JSON.parse(await f.text()); if (!d.sessions) throw new Error(); if (!await askConfirm("今のデータを、このバックアップで置き換えますか？")) return; S.data = migrate(d); S.modal = null; markDirty(); render(); toast("バックアップから戻しました"); }
+    catch { toast("バックアップのファイルを読み込めませんでした"); }
+  }
+};
+
+document.addEventListener("click", (ev) => {
+  const el = ev.target.closest("[data-act]");
+  if (!el || !el.dataset.act || el.tagName === "INPUT") return;
+  const fn = ACT[el.dataset.act];
+  if (fn) { if (el.tagName === "A") ev.preventDefault(); fn(el, ev); }
+});
+document.addEventListener("change", (ev) => { const el = ev.target; if (el.dataset && CHANGE[el.dataset.act]) CHANGE[el.dataset.act](el).finally(() => { el.value = ""; }); });
+document.addEventListener("input", (ev) => {
+  const el = ev.target;
+  if (el.dataset && el.dataset.act === "search") { S.search = el.value; const pos = el.selectionStart; render(); const n = $('[data-act="search"]'); if (n) { n.focus(); n.setSelectionRange(pos, pos); } }
+});
+document.addEventListener("submit", (ev) => {
+  const form = ev.target.closest("form[data-form]"); if (!form) return;
+  ev.preventDefault();
+  const fn = FORM[form.dataset.form];
+  if (fn) fn(new FormData(form), form);
+  if (form.dataset.form === "ask") form.reset();
+});
+document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && S.modal && !["ocr", "onboarding"].includes(S.modal.type)) { S.modal = null; render(); } });
+
+boot();
+setInterval(() => { if (S.mode === "app" && !S.modal && S.route.tab === "today" && !document.activeElement.matches("input,textarea,select")) render(); }, 60000);
+
+</script>
+</body>
+</html>
