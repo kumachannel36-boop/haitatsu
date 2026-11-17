@@ -36,6 +36,12 @@ const DCRM = (() => {
     const base = defaults();
     d.dcr = d.dcr && typeof d.dcr === "object" ? d.dcr : base;
     d.dcr.records ||= {}; d.dcr.scorecards ||= {};
+    const okDate = (v) => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
+    for (const [k, r] of Object.entries(d.dcr.records)) {
+      if (!r || typeof r !== "object" || !okDate(r.date) || (r.cycle !== 1 && r.cycle !== 2)) { delete d.dcr.records[k]; continue; }
+      for (const f of ["planned", "cu", "uta", "nsl", "bc", "other"]) r[f] = Math.max(0, Math.round(Number(r[f]) || 0));
+    }
+    for (const k of Object.keys(d.dcr.scorecards)) if (!okDate(k)) delete d.dcr.scorecards[k];
     d.dcr.settings = { ...base.settings, ...(d.dcr.settings || {}) };
   }
   const D = () => S.data.dcr;
@@ -190,7 +196,7 @@ const DCRM = (() => {
     const start = weekStartOf(first), end = addDays(weekStartOf(last), 6), p = period(dates), L = level(p.dcr), t = ymd(today());
     let h = `<div class="monthnav"><button class="iconbtn" data-act="dcrMonth" data-v="-1" aria-label="前の月">‹</button><b>${m.getFullYear()}年${m.getMonth() + 1}月</b><button class="iconbtn" data-act="dcrMonth" data-v="1" aria-label="次の月">›</button><button class="btn sm" data-act="dcrMonth" data-v="0">今月</button></div>`;
     h += `<section class="card dcr-hero" style="--lv:${L.c}"><div><span class="muted small">${m.getMonth() + 1}月のDCR（未配達率）</span><div class="dcr-big">${pct(p.dcr)}</div><span class="lvpill">${p.workdays ? L.label : "記録なし"}</span></div>
-      <div class="minis"><div class="mini"><span>配達予定</span><b>${n(p.planned)}</b></div><div class="mini"><span>完了</span><b>${n(p.comp)}</b></div><div class="mini"><span>未完了</span><b class="r">${n(p.inc)}</b></div><div class="mini"><span>C1のDCR</span><b>${pct(p.c1dcr)}</b></div><div class="mini"><span>稼働日数</span><b>${p.workdays}日</b></div><div class="mini"><span>多い理由</span><b>${p.top ? p.top.label + " " + p.reasons[p.top.k] + "件" : "なし"}</b></div></div></section>`;
+      <div class="minis"><div class="mini"><span>配達予定</span><b>${n(p.planned)}</b></div><div class="mini"><span>完了</span><b>${n(p.comp)}</b></div><div class="mini"><span>未完了</span><b class="r">${n(p.inc)}</b></div><div class="mini"><span>C1のDCR</span><b>${pct(p.c1dcr)}</b></div><div class="mini"><span>稼働日数</span><b>${p.workdays}日</b></div><div class="mini"><span>多い理由</span><b>${p.top ? p.top.label + " " + p.reasons[p.top.k] + "件" : "なし"}</b></div></div>${p.comp > 0 && typeof yenOf === "function" ? `<p class="small b">売上の目安：${yenOf(p.comp)}（完了 ${n(p.comp)}個 × ${unitPrice()}円）</p>` : ""}</section>`;
     h += legend();
     h += `<section class="card dcal-card"><div class="dcal">${DOW.map((w, i) => `<div class="dow ${i === 0 ? "sun" : i === 6 ? "sat" : ""}">${w}</div>`).join("")}`;
     for (let w = start; w <= end; w = addDays(w, 7)) {

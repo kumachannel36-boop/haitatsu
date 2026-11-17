@@ -515,7 +515,7 @@ const FUELM = (() => {
       <p class="muted small">ExcelやNumbers、Googleスプレッドシートで開けます。</p>
       ${kinds.map(([k, t, d]) => `<button class="row-btn" data-act="fuelCsv" data-kind="${k}"><span class="tile sm" style="background:${ACC}">📄</span><span class="grow"><b>${t}</b><br><span class="muted small">${d}</span></span><span class="chev">↓</span></button>`).join("")}`);
   }
-  const csvEsc = (v) => { const t = String(v ?? "").replace(/"/g, '""'); return /[",\n]/.test(t) ? `"${t}"` : t; };
+  const csvEsc = (v) => { const t = (typeof csvSafe === "function" ? csvSafe(v) : String(v ?? "")).replace(/"/g, '""'); return /[",\n]/.test(t) ? `"${t}"` : t; };
   const csv = (head, rows) => "﻿" + [head, ...rows].map((r) => r.map(csvEsc).join(",")).join("\r\n");
   const slash = (s) => String(s).slice(0, 10).replace(/-/g, "/");
   function makeCsv(kind, y) {

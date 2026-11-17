@@ -2,6 +2,8 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-KiQrGiKjpBkIRWns226xBwMm/UyqYaA5wnEM3SObl9s=' https://cdn.jsdelivr.net blob: 'wasm-unsafe-eval' 'unsafe-eval'; worker-src 'self' blob:; connect-src 'self' https://bhznwbncnzlnpbieetah.supabase.co https://cdn.jsdelivr.net https://tessdata.projectnaptha.com blob: data:; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'self'; manifest-src 'self'">
+<meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#127686">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -174,6 +176,8 @@ input.bad{border-color:var(--r);background:color-mix(in srgb,var(--r) 8%,var(--b
 <noscript><p style="padding:20px">このページを使うには JavaScript を有効にしてください。</p></noscript>
 <script>
 "use strict";
+// ほかのサイトの中に埋め込まれて表示された時は、画面を出さない（クリックジャッキング対策）
+if (window.top !== window.self) { document.documentElement.style.display = "none"; try { window.top.location = window.self.location.href; } catch (e) {} }
 /* =========================================================
    配達データ分析 Web版
    ここに Supabase の「Project URL」と「anon public key」を入れます。
@@ -188,6 +192,8 @@ const CONFIG = {
 /* ---------------- 小さな道具 ---------------- */
 const $ = (sel, root = document) => root.querySelector(sel);
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+/** CSVを表計算ソフトで開いた時に、=や+で始まる文字が式として動かないようにする */
+const csvSafe = (v) => { const t = String(v ?? ""); return typeof v === "string" && /^[=+\-@\t\r]/.test(t) && !/^-?\d+(\.\d+)?$/.test(t) ? "'" + t : t; };
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : "id-" + Date.now().toString(36) + Math.random().toString(36).slice(2));
 const HOUR = 3600e3;
 const T = (d) => (d ? new Date(d).getTime() : NaN);
@@ -512,7 +518,17 @@ function migrate(d) {
    計算（アプリと同じ考え方）
    ========================================================= */
 const A = {
-  sorted(s) { return [...(s.snapshots || [])].sort((a, b) => T(a.time) - T(b.time)); },
+  raw(s) { return [...(s.snapshots || [])].sort((a, b) => T(a.time) - T(b.time)); },
+  /** 計算用：フォローに渡した荷物は「最初から自分の分ではなかった」として、フォローより前の記録から差し引く */
+  sorted(s) {
+    const raw = A.raw(s), fl = s.follows || [];
+    if (!fl.length) return raw;
+    return raw.map((sn) => {
+      let a = sn;
+      for (const f of fl) if (T(sn.time) < T(f.time)) a = { ...a, packages: Math.max(0, (a.packages || 0) - (f.packages || 0)), destinations: Math.max(0, (a.destinations || 0) - (f.destinations || 0)), locations: Math.max(0, (a.locations || 0) - (f.locations || 0)) };
+      return a;
+    });
+  },
   /** 終了していれば「残り0」の点を最後に足す */
   eff(s) {
     const a = A.sorted(s);
@@ -967,11 +983,27 @@ const OCR = {
     }
     r.destinations = OCR.int(/([0-9]+)\s*件の目的地/, all);
     r.locations = OCR.int(/([0-9]+)\s*件の\s*ロケーション/, all);
-    r.packages = OCR.int(/([0-9]+)\s*個の荷物/, all);
+    Object.assign(r, OCR.packageCounts(lines));
     r.undelivered = OCR.int(/未配達\s*([0-9]+)/, all);
     r.completed = OCR.int(/完了\s*([0-9]+)/, all);
     r.bags = OCR.bags(lines);
     return r;
+  },
+  /** 「12個の荷物 – バルク停止」「74個の荷物 – 標準」を別々に読み、合計を荷物の数にする（種類なしは標準） */
+  packageCounts(lines) {
+    let bulk = null, standard = null, plain = null;
+    lines.forEach((line, i) => {
+      const next = lines[i + 1] || "";
+      for (const m of line.matchAll(/([0-9]+)\s*個の荷物/g)) {
+        const v = +m[1];
+        if ((line + " " + next).includes("バルク") && !line.includes("標準")) bulk = (bulk || 0) + v;
+        else if (line.includes("標準") || /^-?\s*標準/.test(next)) standard = (standard || 0) + v;
+        else if (plain == null) plain = v;
+      }
+    });
+    if (bulk == null && standard == null) return { packages: plain, bulk: null, standard: null };
+    const st = standard ?? plain;
+    return { packages: (bulk || 0) + (st || 0), bulk, standard: st };
   },
   colors: ["オレンジ", "ピンク", "グレー", "ネイビー", "ベージュ", "水色", "黄緑", "黒", "緑", "青", "黄", "紫", "赤", "白", "灰", "茶"],
   bags(lines) {
@@ -1006,7 +1038,7 @@ const OCR = {
   async read(file, onProgress) {
     if (!window.Tesseract) {
       onProgress && onProgress("文字認識の準備中（初回だけ少し時間がかかります）…");
-      await new Promise((ok, ng) => { const sc = document.createElement("script"); sc.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"; sc.onload = ok; sc.onerror = () => ng(new Error("文字認識の部品を読み込めませんでした")); document.head.appendChild(sc); });
+      await new Promise((ok, ng) => { const sc = document.createElement("script"); sc.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"; sc.crossOrigin = "anonymous"; sc.referrerPolicy = "no-referrer"; sc.onload = ok; sc.onerror = () => ng(new Error("文字認識の部品を読み込めませんでした")); document.head.appendChild(sc); });
     }
     if (!OCR._worker) OCR._worker = await Tesseract.createWorker(["jpn", "eng"], 1, { logger: (m) => { if (m.status === "recognizing text" && onProgress) onProgress(`読み取り中… ${Math.round(m.progress * 100)}%`); } });
     const { data } = await OCR._worker.recognize(file);
@@ -1285,6 +1317,8 @@ async function submitAuth(fd) {
   S.authError = null; S.authId = id;
   if (!/^[A-Za-z0-9_.@-]{3,40}$/.test(id)) { S.authError = "IDは3〜40文字の半角英数字（-_.も可）にしてください。"; render(); return; }
   if (pw.length < 8) { S.authError = "パスワードは8文字以上にしてください。"; render(); return; }
+  if (S.authMode === "signup" && !(/[A-Za-z]/.test(pw) && /[0-9]/.test(pw))) { S.authError = "パスワードは英字と数字を両方入れてください。"; render(); return; }
+  if (S.authMode !== "signup" && S.lockUntil && Date.now() < S.lockUntil) { S.authError = `何度も失敗したため、${Math.ceil((S.lockUntil - Date.now()) / 1000)}秒待ってからもう一度お試しください。`; render(); return; }
   if (pw2 != null && pw !== pw2) { S.authError = "確認用のパスワードが一致しません。"; render(); return; }
   S.authBusy = true; render();
   try {
@@ -1292,8 +1326,12 @@ async function submitAuth(fd) {
     S.authBusy = false; S.loginId = id;
     await openData();
   } catch (e) {
+    // 続けて5回失敗したら、少しのあいだログインを止める（パスワードの総当たり対策）
+    if (S.authMode !== "signup") { S.authFails = (S.authFails || 0) + 1; if (S.authFails >= 5) S.lockUntil = Date.now() + Math.min(300, 30 * (S.authFails - 4)) * 1000; }
     S.authBusy = false; S.authError = authErrorText(e); render();
+    return;
   }
+  S.authFails = 0; S.lockUntil = 0;
 }
 
 /* ---------- リマインダー（画面を開いている間だけ） ---------- */
@@ -1342,8 +1380,8 @@ function viewToday() {
       <p class="muted small">配達アプリの進捗画面のスクショからも始められます。</p>
       <label class="btn ghost filebtn">📷 スクショから読み取って開始<input type="file" accept="image/*" data-act="ocr-start" hidden></label>`);
     if (!S.data.sessions.length) h += card("はじめての方へ", "👋", `<p>記録がまだありません。お試しデータを入れると、すべての機能の見え方を確認できます（あとで設定から消せます）。</p><button class="btn" data-act="demo-add">お試しデータで全部の機能を見てみる</button>`);
-    const last = latestSession(S.trip);
-    if (last) h += card("前回の" + S.trip + "便", "🕘", sessionRow(last));
+    const recent = S.data.sessions.filter((x) => x.trip === S.trip && !sameDay(x.startTime, new Date())).sort((a, b) => T(b.startTime) - T(a.startTime)).slice(0, 3);
+    if (recent.length) h += card("前の" + S.trip + "便を見る・直す", "🕘", recent.map(sessionRow).join("") + `<p class="muted small">日付が変わったあとでも、数字・時刻・終了時刻を直せます。</p>`);
     return h;
   }
   const f = forecastOf(s);
@@ -1354,6 +1392,8 @@ function viewToday() {
       ${s.finishedAt ? `<button class="btn" data-act="reopen">再開する</button>` : `<button class="btn" data-act="finish">終了</button>`}
     </div>`;
   h += `<button class="trouble-big" data-act="trouble-sheet">🛟 困った時はここ</button>`;
+  h += `<button class="btn" data-act="modal" data-type="follow" data-sid="${s.id}">🤝 フォローに来てもらった（前後のスクショで分析）</button>`;
+  h += followCard(s, false);
   const alerts = buildAlerts(s, f, S.data);
   if (alerts.length) h += card("注意事項", "🔔", alerts.map((a) => `<div class="alert ${a.level}">${esc(a.text)}</div>`).join(""));
   if (!f.isDone) h += paceMakerCard(s, f);
@@ -1412,7 +1452,24 @@ function lossCard(s) {
 }
 function remainingCard(s, f) {
   const l = A.sorted(s).at(-1); if (!l) return "";
-  return card("残り", "📦", `<div class="minis">${mini("荷物", f.remainingPkg + "個", "or")}${mini("目的地", f.remainingDest + "件")}${mini("ロケーション", (l.locations || 0) + "件")}${mini("配達済み", A.delivered(s) + "個", "g")}${mini("次の目的地", "#" + f.nextStop)}${mini("最終記録", Fmt.hm(l.time))}</div>`);
+  const up = unitPrice(), fp = followPkgs(s);
+  return card("残り", "📦", `<div class="minis">${mini("荷物", f.remainingPkg + "個", "or")}${mini("目的地", f.remainingDest + "件")}${mini("ロケーション", (l.locations || 0) + "件")}${mini("配達済み", A.delivered(s) + "個", "g")}${mini("次の目的地", "#" + f.nextStop)}${mini("最終記録", Fmt.hm(l.time))}</div>
+    <p class="small b g">売上の目安：配達済み ${yenOf(A.delivered(s))}／全部で ${yenOf(A.initial(s))}（1個${up}円）</p>${fp ? `<p class="muted small">フォローに渡した荷物 ${fp}個は、最初の数から除いています。</p>` : ""}`);
+}
+/* ---------- 売上の目安（1個あたりの単価） ---------- */
+function unitPrice() { const v = Math.round(+((S.data && S.data.settings && S.data.settings.unitPrice) || 100)); return v > 0 && v <= 10000 ? v : 100; }
+function yenOf(n) { return "¥" + Math.round((n || 0) * unitPrice()).toLocaleString("ja-JP"); }
+function followPkgs(s) { return (s.follows || []).reduce((a, f) => a + (f.packages || 0), 0); }
+function earningsCard(s) {
+  const done = A.delivered(s), total = A.initial(s), fp = followPkgs(s);
+  return card(`売上の目安（1個${unitPrice()}円）`, "💴", `<p class="big b">${yenOf(done)} <span class="muted small">配達した荷物 ${done}個</span></p>${!s.finishedAt && total > done ? `<p class="muted small">全部配ると ${yenOf(total)}（${total}個）</p>` : ""}${fp ? `<p class="muted small">フォローに渡した ${fp}個（${yenOf(fp)}）は含みません</p>` : ""}`);
+}
+/* ---------- フォロー（応援）の記録 ---------- */
+function followCard(s, always) {
+  const fl = (s.follows || []).slice().sort((a, b) => T(a.time) - T(b.time));
+  if (!fl.length && !always) return "";
+  const rows = fl.map((f) => `<div class="li"><span class="grow"><b>${Fmt.hm(f.time)}</b> 荷物 ${f.packages}個・目的地 ${f.destinations}件・ロケ ${f.locations}件<br><span class="muted small">${f.bulk ? "うちバルク " + f.bulk + "個・" : ""}${yenOf(f.packages)} 分${f.memo ? "・" + esc(f.memo) : ""}</span></span><button class="link r" data-act="follow-del" data-sid="${s.id}" data-id="${f.id}">削除</button></div>`).join("");
+  return card("フォロー（応援）", "🤝", rows + (fl.length > 1 ? `<p class="b">合計：荷物 ${followPkgs(s)}個</p>` : "") + `<button class="btn" data-act="modal" data-type="follow" data-sid="${s.id}">＋ フォロー前後のスクショで記録</button>${fl.length ? "" : `<p class="muted small">フォローに来てもらった時に、何個・何件持って行ってもらったかを記録できます。</p>`}`);
 }
 function nextBagCard(s, f) {
   const bags = (s.bags || []).filter((b) => !b.overflow && !b.done);
@@ -1429,7 +1486,7 @@ function upcomingNotesCard(s, f) {
   return card("この先のメモ", "📌", list.map((n) => noteRow(n, s, f)).join(""));
 }
 function snapList(s) {
-  const snaps = A.sorted(s);
+  const snaps = A.raw(s);
   if (!snaps.length) return `<p class="muted">記録がありません</p>`;
   return `<div class="table"><div class="tr th"><span>時刻</span><span>荷物</span><span>目的地</span><span>予測</span><span></span></div>${snaps.slice().reverse().map((sn) => `<div class="tr"><span>${Fmt.hm(sn.time)}</span><span>${sn.packages}</span><span>${sn.destinations}</span><span class="muted">${sn.appEstimate ? Fmt.hm(sn.appEstimate) : "-"}</span><span><button class="link" data-act="snap-edit" data-id="${sn.id}">編集</button></span></div>`).join("")}</div>`;
 }
@@ -1448,7 +1505,7 @@ function remainingChart(s, big) {
 function sessionRow(s) {
   const p = A.sessionPace(s), d = A.durationMin(s);
   return `<button class="row-btn" data-act="go" data-tab="history" data-page="session" data-id="${s.id}">
-    ${tripBadge(s.trip)}<span>${Fmt.day(s.startTime)}</span><span class="muted">${A.initial(s)}個</span><span>${p ? Fmt.num(p) + "個/時" : "-"}</span><span class="muted">${d ? Fmt.hm(s.finishedAt) + "終了" : s.finishedAt ? "" : "記録中"}</span><span class="chev">›</span></button>`;
+    ${tripBadge(s.trip)}<span>${Fmt.day(s.startTime)}</span><span class="muted">${A.initial(s)}個</span><span>${p ? Fmt.num(p) + "個/時" : "-"}</span><span class="g small">${yenOf(A.delivered(s))}</span><span class="muted">${d ? Fmt.hm(s.finishedAt) + "終了" : s.finishedAt ? "" : "記録中"}</span><span class="chev">›</span></button>`;
 }
 
 /* ================= グラフ・分析 ================= */
@@ -1658,7 +1715,9 @@ function viewSession(id) {
   h += card("振り返り", "⭐", `${ratingAvg(s.rating) ? RATING_KEYS.map(([k, t]) => `<div class="li"><span class="grow">${t}</span><span class="stars">${stars(s.rating[k])}</span></div>`).join("") + (s.rating.comment ? `<p class="small">${esc(s.rating.comment)}</p>` : "") : `<p class="muted">まだ振り返りがありません</p>`}
     <p class="b g">できていたこと</p><ul>${rv.good.map((g) => `<li>${esc(g)}</li>`).join("")}</ul>${rv.improve.length ? `<p class="b or">次に気をつけること</p><ul>${rv.improve.map((g) => `<li>${esc(g)}</li>`).join("")}</ul>` : ""}
     <button class="btn" data-act="modal" data-type="review" data-id="${s.id}">振り返りをつける</button>`);
-  h += card("記録", "🗒️", snapList(s));
+  h += earningsCard(s);
+  h += followCard(s, true);
+  h += card("記録", "🗒️", snapList(s) + `<div class="row2"><button class="btn primary" data-act="snap-add" data-sid="${s.id}">＋ 記録を追加</button><button class="btn" data-act="modal" data-type="session" data-id="${s.id}">日付・時刻・終了を直す</button></div><p class="muted small">日付が変わったあとでも、数字・時刻・終了時刻を直せます。</p>`);
   h += `<button class="btn danger" data-act="session-del" data-id="${s.id}">この便を削除</button>`;
   void f;
   return h;
@@ -1704,15 +1763,40 @@ function viewModal(m) {
   return f ? f(m) : "";
 }
 const MODALS = {
+  follow(m) {
+    const s = findSession(m.sid); if (!s) return "";
+    const last = A.raw(s).at(-1) || {};
+    m.before ||= { packages: last.packages ?? "", bulk: "", destinations: last.destinations ?? "", locations: last.locations ?? "", completed: last.completed ?? "", time: last.time || null };
+    m.after ||= { packages: "", bulk: "", destinations: "", locations: "", completed: "", time: null };
+    const side = (k, t, v) => `<fieldset class="span2"><legend>${t}</legend>
+      <label class="btn filebtn">📷 ${v.read ? "スクショを選び直す" : "スクショを選ぶ"}<input type="file" accept="image/*" data-act="follow-shot" data-side="${k}" hidden></label>
+      <div class="grid2">
+      <label>荷物（バルク＋標準）<input type="number" name="${k}_packages" min="0" inputmode="numeric" value="${esc(v.packages)}"></label>
+      <label>うちバルク<input type="number" name="${k}_bulk" min="0" inputmode="numeric" value="${esc(v.bulk)}"></label>
+      <label>目的地<input type="number" name="${k}_destinations" min="0" inputmode="numeric" value="${esc(v.destinations)}"></label>
+      <label>ロケーション<input type="number" name="${k}_locations" min="0" inputmode="numeric" value="${esc(v.locations)}"></label>
+      <label>完了した目的地<input type="number" name="${k}_completed" min="0" inputmode="numeric" value="${esc(v.completed)}"></label>
+      <label>時刻<input type="time" name="${k}_time" value="${v.time ? Fmt.inputTime(v.time) : ""}"></label></div></fieldset>`;
+    return sheet("フォローの分析", `<form data-form="follow" data-sid="${s.id}" class="grid2">
+      <p class="note span2">フォローの人に荷物を渡す直前と、渡し終わった直後に「配達プラン概要」のスクショを撮って選んでください。差から、持って行ってもらった荷物と目的地を計算します。画像は端末の中で読み取り、保存も送信もしません。</p>
+      ${m.msg ? `<p class="small span2">${esc(m.msg)}</p>` : ""}
+      ${side("b", "① フォロー前", m.before)}${side("a", "② フォロー後", m.after)}
+      <label class="check-l span2"><input type="checkbox" name="addSnap" checked> フォロー後の数字を進捗の記録にも入れる</label>
+      <label class="span2">メモ<input name="memo" placeholder="例：〇〇さん、エリア30〜41"></label>
+      <button class="btn primary big span2" type="submit">計算して保存</button></form>`);
+  },
   snap(m) {
     const s = findSession(m.sid) || activeSession();
     const sn = m.id ? s.snapshots.find((x) => x.id === m.id) : null;
-    const last = A.sorted(s).at(-1);
+    const last = A.raw(s).at(-1);
+    const past = !sameDay(s.startTime, new Date());
+    const defTime = sn ? sn.time : past ? new Date(T(last ? last.time : s.startTime) + 30 * 60e3) : new Date();
     const p = m.prefill || {};
     const v = (k, d) => (p[k] != null ? p[k] : sn ? sn[k] : d);
     return sheet(sn ? "記録を編集" : "進捗を記録", `<form data-form="snap" data-sid="${s.id}" data-id="${sn ? sn.id : ""}" class="grid2">
       ${p.summary ? `<p class="note span2">${esc(p.summary)}</p>` : ""}
-      <label>時刻<input type="time" name="time" value="${p.time ? Fmt.inputTime(p.time) : timeVal(sn ? sn.time : new Date())}" required></label>
+      ${past ? `<p class="note span2">${Fmt.day(s.startTime)}の便の記録です。日付が変わっても、あとから数字や時刻を直せます。</p>` : ""}
+      <label>時刻<input type="time" name="time" value="${p.time ? Fmt.inputTime(p.time) : timeVal(defTime)}" required></label>
       <label>残りの荷物（個）<input type="number" name="packages" min="0" inputmode="numeric" required value="${esc(v("packages", last ? last.packages : ""))}"></label>
       <label>残りの目的地（件）<input type="number" name="destinations" min="0" inputmode="numeric" value="${esc(v("destinations", last ? last.destinations : ""))}"></label>
       <label>残りのロケーション<input type="number" name="locations" min="0" inputmode="numeric" value="${esc(v("locations", last ? last.locations : ""))}"></label>
@@ -1906,6 +1990,7 @@ const MODALS = {
         <label class="check-l span2"><input type="checkbox" name="countReturnPin" ${st.countReturnPin ? "checked" : ""}> 最後のセンター（倉庫）に戻るピンも目的地として数える</label>
         <label class="check-l span2"><input type="checkbox" name="reminderOn" ${st.reminderOn ? "checked" : ""}> 記録のリマインダー（この画面を開いている間）</label>
         <label>リマインダーの間隔（分）<input type="number" name="reminderMinutes" min="15" max="180" step="5" value="${st.reminderMinutes}"></label>
+        <label class="span2">売上の目安：1個あたり（円）<input type="number" name="unitPrice" min="1" max="10000" step="1" inputmode="numeric" value="${unitPrice()}"></label>
         <button class="btn primary span2" type="submit">保存</button>
       </form>
       <h3>お試しデータ</h3>
@@ -2022,6 +2107,8 @@ function demoData() {
    操作
    ========================================================= */
 const ACT = {
+  "snap-add"(el) { S.modal = { type: "snap", sid: el.dataset.sid }; render(); },
+  async "follow-del"(el) { if (!await askConfirm("このフォローの記録を削除しますか？")) return; mutate(() => { const s = findSession(el.dataset.sid); s.follows = (s.follows || []).filter((x) => x.id !== el.dataset.id); }); },
   go(el) { const d = el.dataset; S.search = ""; if (d.page) S.route = { tab: d.tab, page: d.page, id: d.id || null, parent: S.route.tab === d.tab ? S.route.page : null, parentId: S.route.tab === d.tab ? S.route.id : null }; else S.route = { tab: d.tab, page: null, id: null }; S.modal = null; render(); window.scrollTo(0, 0); },
   back,
   close() { S.modal = null; render(); },
@@ -2115,7 +2202,7 @@ const ACT = {
   csv() {
     const rows = [["日付", "便", "記録時刻", "残り荷物", "残り目的地", "残りロケーション", "完了目的地", "休憩分", "アプリ予測", "自分の予想", "開始", "終了", "目標", "メモ"]];
     for (const s of S.data.sessions.slice().sort((a, b) => T(a.startTime) - T(b.startTime))) for (const sn of A.sorted(s)) rows.push([Fmt.ymd(s.startTime), s.trip, Fmt.csv(sn.time), sn.packages, sn.destinations, sn.locations ?? "", sn.completed ?? "", sn.breakMinutes || 0, Fmt.csv(sn.appEstimate), Fmt.csv(sn.myEstimate), Fmt.csv(s.startTime), Fmt.csv(s.finishedAt), Fmt.csv(s.targetEnd), sn.memo || ""]);
-    download("配達データ.csv", "﻿" + rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n"), "text/csv");
+    download("配達データ.csv", "﻿" + rows.map((r) => r.map((c) => `"${csvSafe(c).replace(/"/g, '""')}"`).join(",")).join("\n"), "text/csv");
   },
   backup() { download(`配達データ分析_バックアップ_${Fmt.ymd(new Date()).replace(/\//g, "")}.json`, JSON.stringify(S.data), "application/json"); }
 };
@@ -2144,6 +2231,25 @@ function askQ(q) { if (!q || !q.trim()) return; S.chat.push({ me: true, text: q 
 const num = (v) => (v === "" || v == null ? null : Number(v));
 const lines = (v) => String(v || "").split("\n").map((x) => x.trim()).filter(Boolean);
 const FORM = {
+  follow(fd, form) {
+    const s = findSession(form.dataset.sid); if (!s) return;
+    const g = (k) => Math.max(0, Math.round(num(fd.get(k)) || 0));
+    const B = { p: g("b_packages"), bulk: g("b_bulk"), d: g("b_destinations"), l: g("b_locations"), c: g("b_completed") };
+    const Af = { p: g("a_packages"), bulk: g("a_bulk"), d: g("a_destinations"), l: g("a_locations"), c: g("a_completed") };
+    const own = Math.max(0, Af.c - B.c);                                      // この間に自分で配った目的地
+    const ownPkg = own && B.d ? Math.round(own * (B.p / B.d)) : 0;
+    const f = { id: uid(), packages: Math.max(0, B.p - Af.p - ownPkg), destinations: Math.max(0, B.d - Af.d - own), locations: Math.max(0, B.l - Af.l - own), bulk: Math.max(0, B.bulk - Af.bulk), memo: fd.get("memo") || "" };
+    if (!f.packages && !f.destinations) { toast("フォロー前とフォロー後の数字を入れてください"); return; }
+    const day = sameDay(s.startTime, new Date()) ? new Date() : new Date(s.startTime);
+    const at = fd.get("a_time") ? atTime(day, fd.get("a_time")) : new Date();
+    f.time = iso(at); f.beforeTime = fd.get("b_time") ? iso(atTime(day, fd.get("b_time"))) : null;
+    S.modal = null;
+    mutate(() => {
+      (s.follows ||= []).push(f);
+      if (fd.get("addSnap") && (Af.p || Af.d)) s.snapshots.push({ id: uid(), time: iso(new Date(T(at) + 1000)), packages: Af.p, destinations: Af.d, locations: Af.l, completed: Af.c || null, breakMinutes: 0, myEstimate: null, memo: "フォロー後" });
+    });
+    toast(`フォロー：荷物 ${f.packages}個・目的地 ${f.destinations}件（${yenOf(f.packages)} 分）を記録しました${own ? `。この間に自分で配った ${own}件は差し引きました` : ""}`);
+  },
   auth: submitAuth,
   ask(fd, form) { askQ(fd.get("q")); },
   start(fd) {
@@ -2159,7 +2265,8 @@ const FORM = {
   snap(fd, form) {
     const s = findSession(form.dataset.sid), id = form.dataset.id;
     const base = A.sorted(s).at(-1) ? new Date(A.sorted(s).at(-1).time) : new Date(s.startTime);
-    let time = atTime(id ? s.snapshots.find((x) => x.id === id).time : new Date(), fd.get("time"));
+    const dayBase = id ? s.snapshots.find((x) => x.id === id).time : sameDay(s.startTime, new Date()) ? new Date() : s.startTime;
+    let time = atTime(dayBase, fd.get("time"));
     if (!id && T(time) < T(s.startTime) - 6 * HOUR) time.setDate(time.getDate() + 1);
     void base;
     const v = { time: iso(time), packages: +fd.get("packages"), destinations: num(fd.get("destinations")) ?? 0, locations: num(fd.get("locations")) ?? 0, completed: num(fd.get("completed")), breakMinutes: num(fd.get("breakMinutes")) || 0, myEstimate: fd.get("myEstimate") ? iso(atTime(time, fd.get("myEstimate"))) : null, memo: fd.get("memo") || "" };
@@ -2213,10 +2320,21 @@ const FORM = {
     const s = findSession(form.dataset.id), day = new Date(fd.get("date") + "T00:00:00");
     const st = atTime(day, fd.get("start")), tg = atTime(day, fd.get("target")), fi = atTime(day, fd.get("finish"));
     if (tg && T(tg) < T(st)) tg.setDate(tg.getDate() + 1); if (fi && T(fi) < T(st)) fi.setDate(fi.getDate() + 1);
-    S.modal = null; mutate(() => { Object.assign(s, { trip: fd.get("trip"), date: iso(day), startTime: iso(st), targetEnd: tg ? iso(tg) : null, finishedAt: fi ? iso(fi) : null, memo: fd.get("memo") }); });
+    const shift = Math.round((T(startOfDay(day)) - T(startOfDay(s.startTime))) / 86400e3);
+    const mv = (d) => { if (!d) return d; const x = new Date(d); x.setDate(x.getDate() + shift); return iso(x); };
+    S.modal = null; mutate(() => {
+      if (shift) {
+        // 日付を変えた時は、記録・メモ・フォローの時刻もいっしょに動かす
+        for (const sn of s.snapshots || []) { sn.time = mv(sn.time); sn.myEstimate = mv(sn.myEstimate); sn.appEstimate = mv(sn.appEstimate); }
+        for (const n of s.notes || []) n.deadline = mv(n.deadline);
+        for (const f of s.follows || []) { f.time = mv(f.time); f.beforeTime = mv(f.beforeTime); }
+        for (const l of s.losses || []) { l.start = mv(l.start); l.end = mv(l.end); }
+      }
+      Object.assign(s, { trip: fd.get("trip"), date: iso(day), startTime: iso(st), targetEnd: tg ? iso(tg) : null, finishedAt: fi ? iso(fi) : null, memo: fd.get("memo") });
+    });
   },
   settings(fd) {
-    mutate((d) => Object.assign(d.settings, { defaultPkgPace: clamp(num(fd.get("defaultPkgPace")) || 20, 5, 60), priorHours: clamp(num(fd.get("priorHours")) || 1.5, 0.5, 5), recentWeight: clamp(num(fd.get("recentWeight")) ?? 0.5, 0, 1), countReturnPin: !!fd.get("countReturnPin"), reminderOn: !!fd.get("reminderOn"), reminderMinutes: clamp(num(fd.get("reminderMinutes")) || 60, 15, 180) }));
+    mutate((d) => Object.assign(d.settings, { defaultPkgPace: clamp(num(fd.get("defaultPkgPace")) || 20, 5, 60), priorHours: clamp(num(fd.get("priorHours")) || 1.5, 0.5, 5), recentWeight: clamp(num(fd.get("recentWeight")) ?? 0.5, 0, 1), countReturnPin: !!fd.get("countReturnPin"), reminderOn: !!fd.get("reminderOn"), reminderMinutes: clamp(num(fd.get("reminderMinutes")) || 60, 15, 180), unitPrice: clamp(Math.round(num(fd.get("unitPrice")) || 100), 1, 10000) }));
     if (fd.get("reminderOn") && "Notification" in window && Notification.permission === "default") Notification.requestPermission();
     toast("設定を保存しました");
   },
@@ -2245,18 +2363,34 @@ async function readShots(files) {
     results.push(OCR.parse(ls, new Date()));
   }
   const r = { bags: [] };
+  let plain = null;
   for (const p of results) {
     if (p.time && (!r.time || T(p.time) > T(r.time))) r.time = p.time;
-    for (const k of ["destinations", "locations", "packages", "completed", "undelivered"]) if (r[k] == null && p[k] != null) r[k] = p[k];
+    for (const k of ["destinations", "locations", "completed", "undelivered", "bulk", "standard"]) if (r[k] == null && p[k] != null) r[k] = p[k];
+    if (p.bulk == null && p.standard == null && plain == null && p.packages != null) plain = p.packages;
     for (const b of p.bags) if (!r.bags.some((x) => OCR.bagKey(x) === OCR.bagKey(b))) r.bags.push(b);
   }
+  // バルクと標準が別々のスクショに写っていても、合計を荷物の数にする
+  if (r.bulk != null || r.standard != null) { r.standard = r.standard ?? plain; r.packages = (r.bulk || 0) + (r.standard || 0); } else r.packages = plain;
   if (r.destinations == null && r.undelivered != null) r.destinations = r.undelivered;
   const parts = [];
-  if (r.packages != null) parts.push("荷物" + r.packages); if (r.destinations != null) parts.push("目的地" + r.destinations); if (r.locations != null) parts.push("ロケーション" + r.locations); if (r.bags.length) parts.push("バッグ" + r.bags.length + "件");
+  if (r.packages != null) parts.push("荷物" + r.packages + (r.bulk ? `（バルク${r.bulk}＋標準${r.standard || 0}）` : "")); if (r.destinations != null) parts.push("目的地" + r.destinations); if (r.locations != null) parts.push("ロケーション" + r.locations); if (r.bags.length) parts.push("バッグ" + r.bags.length + "件");
   r.summary = parts.length ? "読み取り結果：" + parts.join("・") + "（違っていたら直してください）" : "数字を読み取れませんでした。手入力してください。";
   return r;
 }
 const CHANGE = {
+  async "follow-shot"(el) {
+    const files = el.files; if (!files.length || !S.modal || S.modal.type !== "follow") return;
+    const m = S.modal, side = el.dataset.side === "b" ? "before" : "after";
+    try {
+      m.msg = "読み取り中…"; render();
+      const r = await readShots(files);
+      S.modal = m;
+      if (r.packages == null && r.destinations == null) { m.msg = "数字を読み取れませんでした。「配達プラン概要」の画面全体のスクショを選ぶか、手で入力してください。"; render(); return; }
+      m[side] = { read: true, packages: r.packages ?? "", bulk: r.bulk ?? "", destinations: r.destinations ?? "", locations: r.locations ?? "", completed: r.completed ?? "", time: r.time || null };
+      m.msg = r.summary; render();
+    } catch (e) { S.modal = m; m.msg = "読み取りに失敗しました。手で入力してください。"; render(); }
+  },
   async "ocr-snap"(el) {
     const files = el.files; if (!files.length) return;
     const s = activeSession();
@@ -2309,7 +2443,7 @@ document.addEventListener("DOMContentLoaded", boot);
 setInterval(() => { if (S.mode === "app" && !S.modal && S.route.tab === "today" && !document.activeElement.matches("input,textarea,select")) render(); }, 60000);
 
 </script>
-<script src="dcr.js?v=20261114"></script>
-<script src="fuel.js?v=20261114"></script>
+<script src="dcr.js?v=202611180734"></script>
+<script src="fuel.js?v=202611180734"></script>
 </body>
 </html>
