@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-KiQrGiKjpBkIRWns226xBwMm/UyqYaA5wnEM3SObl9s=' https://cdn.jsdelivr.net blob: 'wasm-unsafe-eval' 'unsafe-eval'; worker-src 'self' blob:; connect-src 'self' https://bhznwbncnzlnpbieetah.supabase.co https://cdn.jsdelivr.net https://tessdata.projectnaptha.com blob: data:; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'self'; manifest-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-NmkcZoqL9DSurHw90nIaGCMjHmFvk6qNHcGGaWo7lR8=' https://cdn.jsdelivr.net blob: 'wasm-unsafe-eval' 'unsafe-eval'; worker-src 'self' blob:; connect-src 'self' https://bhznwbncnzlnpbieetah.supabase.co https://cdn.jsdelivr.net https://tessdata.projectnaptha.com blob: data:; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'self'; manifest-src 'self'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#127686">
@@ -330,12 +330,12 @@ const LOSS_REASONS = ["渋滞", "荷物探し", "建物で迷った", "お客様
 const MISS_CATS = ["時間指定", "誤配", "置き配写真", "荷物の扱い", "連絡漏れ", "持ち戻り", "その他"];
 const TROUBLE_CATS = ["配達方法が分からない", "建物に入れない", "宅配BOX関連", "置き場所がない", "お客様関連", "荷物関連", "時間指定関連", "アプリ/端末関連", "その他"];
 const TROUBLE_KEYWORDS = {
-  "配達方法が分からない": ["置き配", "ステータス", "不在", "ロッカー"],
+  "配達方法が分からない": ["置き配", "ステータス", "不在", "ロッカー", "医薬品", "手渡し"],
   "建物に入れない": ["オートロック", "UTA", "たどり着けない", "入れ", "通行止め", "規制"],
   "宅配BOX関連": ["宅配ボックス", "宅配BOX", "ロッカー", "満杯"],
   "置き場所がない": ["置き配", "NSL", "該当場所", "置け"],
   "お客様関連": ["不在", "CU", "お客様", "連絡票"],
-  "荷物関連": ["余", "不足", "破損", "荷物", "集荷", "返品", "梱包"],
+  "荷物関連": ["余", "不足", "破損", "荷物", "集荷", "返品", "梱包", "医薬品", "セルフリターン", "アソシエイト"],
   "時間指定関連": ["時間指定", "午前", "締め切り", "悪天候"],
   "アプリ/端末関連": ["アプリ", "Bluetooth", "スロット", "バーコード"],
   "その他": ["通行止め", "イベント", "規制"]
@@ -366,7 +366,7 @@ const DEFAULT_TERMS = [
 ].map(([word, meaning, when, action]) => ({ word, meaning, when, action }));
 
 /* ---------------- 初期のマニュアル ---------------- */
-const MANUALS_VERSION = 3;
+const MANUALS_VERSION = 4;
 const R = (place, situation, code) => ({ place, situation, code });
 const DEFAULT_MANUALS = [
   {
@@ -438,12 +438,35 @@ const DEFAULT_MANUALS = [
     points: ["Q 荷物が見当たらない・特定できない → 在宅確認・電話で確認 → 連絡がつかなければ「？」から集荷不可能", "Q 集荷の時間は？ → C1便のみ。8:00〜13:00の間", "Q 梱包せずに置かれていた・渡された → 受け取らずに「品目の梱包に不備がある」でスキップ（会社の箱でなくてもOK。中身が取り出せない状態なら正常）", "分からない時は、近くの管理者に声をかける"],
     table: [R("自宅集荷", "荷物が見当たらない・特定できず、連絡もつかない", "集荷不可能"), R("自宅集荷", "梱包されていない・中身が取り出せる", "スキップ"), R("自宅集荷", "梱包が正常（箱の種類は問わない）", "受け取る")],
     template: ""
+  },
+  {
+    title: "医薬品・医療機器の配達（置き配禁止）", icon: "💊",
+    summary: "「置き配禁止」のラベルが印字された医薬品・医療機器は、手渡しだけです。渡せるのは、お客様本人・家族、または受付係・ドアマンだけ。置き配・玄関・郵便受け（ポスト）・宅配ボックスはすべて不可です。",
+    steps: ["荷物に「置き配禁止」のラベルが印字されているか確認する", "インターフォンで在宅を確認し、受け取りに来てもらう", "インターフォンなどで置き配を頼まれても、置き配できないことを説明し、受け取りに来てもらう", "お客様本人・家族、または受付係・ドアマンに手渡しする", "誰にも渡せない時は、置き配も近所の方への手渡しもせず、持ち戻る"],
+    cautions: ["いかなる理由でも置き配は厳禁", "宅配ボックス・郵便受け（ポスト）・玄関前も禁止（11月19日から手渡しのみに変更）", "配達希望の変更や電話で置き配を頼まれても、「置き配禁止」ラベルの指示を優先する", "近所の方への手渡しもしない"],
+    points: ["配達アプリの「お客様のご住所」でOKになるのは「お客様本人または家族」「受付係またはドアマン」だけ", "渡せなかった荷物は、ほかの荷物と同じように持ち戻りの処理をする"],
+    table: [R("医薬品・医療機器", "お客様本人・家族に手渡し", "手渡しOK"), R("医薬品・医療機器", "受付係・ドアマンに手渡し", "手渡しOK"), R("医薬品・医療機器", "置き配・玄関・宅配ボックス・郵便受け", "不可"), R("医薬品・医療機器", "誰にも渡せない（近所の方にも渡さない）", "持ち戻り")],
+    template: ""
+  },
+  {
+    title: "返品のセンター返却（アソシエイトに手渡し）", icon: "🤝",
+    summary: "自宅集荷で受け取った返品の荷物をセンターに返却する時は、セルフリターンができる場合でも、必ずアソシエイトに手渡しします。",
+    steps: ["拠点に着いたら「停車しました」→「荷物をスキャン」の順に選び、黄色ラベルのバーコードをスキャンして持ち戻りの処理をする", "返品の荷物は、セルフリターンの場所に置かない", "返品の荷物は、必ずアソシエイトに直接手渡しする", "「スワイプして終了」を押し、「配達が完了しました」と出たら終了"],
+    cautions: ["セルフリターンが可能な日でも、返品の荷物はセルフリターンしない", "持ち戻りのほかの荷物と混ぜない"],
+    points: ["集荷のしかたは「返品の自宅集荷（集荷のしかた）」、拠点での処理は「返品の自宅集荷（拠点での持ち戻り）」を見る", "分からない時は、近くの管理者に声をかける"],
+    table: [R("返品（自宅集荷）", "センター返却の時", "アソシエイトに手渡し"), R("返品（自宅集荷）", "セルフリターン", "不可")],
+    template: ""
   }
 ];
-const CODE_COLOR = { CU: "#1a64e8", UTA: "#e5383b", NSL: "#f08c00", "後回し": "#20a84a", "悪天候": "#9b59d0", "集荷不可能": "#e5383b", "スキップ": "#f08c00", "受け取る": "#20a84a" };
+const CODE_COLOR = { CU: "#1a64e8", UTA: "#e5383b", NSL: "#f08c00", "後回し": "#20a84a", "悪天候": "#9b59d0", "集荷不可能": "#e5383b", "スキップ": "#f08c00", "受け取る": "#20a84a", "手渡しOK": "#20a84a", "アソシエイトに手渡し": "#20a84a", "不可": "#e5383b", "持ち戻り": "#f08c00" };
 
 /* 手順の文章から絵を選ぶ（上ほど優先） */
 const STEP_ART = [
+  [["ラベルが印字", "ラベルの指示"], "🏷️", "#e5383b", "ラベル確認"],
+  [["置き配を頼まれ", "置き配できない"], "🙅", "#e5383b", "置き配は断る"],
+  [["セルフリターンの場所に置かない"], "🚫", "#e5383b", "セルフリターン不可"],
+  [["アソシエイト"], "🤝", "#20a84a", "アソシエイトへ"],
+  [["手渡しする"], "🤝", "#20a84a", "手渡し"],
   [["集荷不可能", "見当たらない"], "❓", "#e5383b", "集荷不可能"],
   [["梱包に不備", "梱包せず"], "🚫", "#f08c00", "受け取らない"],
   [["停車しました", "拠点に着"], "🏢", "#127686", "拠点で処理"],
@@ -2443,7 +2466,7 @@ document.addEventListener("DOMContentLoaded", boot);
 setInterval(() => { if (S.mode === "app" && !S.modal && S.route.tab === "today" && !document.activeElement.matches("input,textarea,select")) render(); }, 60000);
 
 </script>
-<script src="dcr.js?v=202611180734"></script>
-<script src="fuel.js?v=202611180734"></script>
+<script src="dcr.js?v=202611191140"></script>
+<script src="fuel.js?v=202611191140"></script>
 </body>
 </html>
