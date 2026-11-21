@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-NmkcZoqL9DSurHw90nIaGCMjHmFvk6qNHcGGaWo7lR8=' https://cdn.jsdelivr.net blob: 'wasm-unsafe-eval' 'unsafe-eval'; worker-src 'self' blob:; connect-src 'self' https://bhznwbncnzlnpbieetah.supabase.co https://cdn.jsdelivr.net https://tessdata.projectnaptha.com blob: data:; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'self'; manifest-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-HbwtJU7SEwg29vyL4Vv8y7P5C0nUvI1titN5J07Iv64=' https://cdn.jsdelivr.net blob: 'wasm-unsafe-eval' 'unsafe-eval'; worker-src 'self' blob:; connect-src 'self' https://bhznwbncnzlnpbieetah.supabase.co https://cdn.jsdelivr.net https://tessdata.projectnaptha.com blob: data:; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'self'; manifest-src 'self'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#127686">
@@ -1249,7 +1249,8 @@ function latestSession(trip) { return sessionsOf(trip)[0] || null; }
 function activeSession(trip = S.trip) {
   const s = latestSession(trip);
   if (!s) return null;
-  if (!s.finishedAt || sameDay(s.startTime, new Date())) return s;
+  // 終了していない便でも、開始から20時間以上たった便（あとから登録した過去の便など）は「今日」に出さない
+  if (sameDay(s.startTime, new Date()) || (!s.finishedAt && Date.now() - T(s.startTime) < 20 * HOUR)) return s;
   return null;
 }
 function findSession(id) { return S.data.sessions.find((s) => s.id === id); }
@@ -1392,7 +1393,8 @@ function viewToday() {
   if (!s) {
     h += card("配達をはじめる", "▶️", `
       <form data-form="start" class="grid2">
-        <label>日付<input type="date" name="date" value="${Fmt.inputDate()}" required></label>
+        <label>日付<input type="date" name="date" value="${Fmt.inputDate()}" max="${Fmt.inputDate()}" required></label>
+        <p class="note span2">過去の日付を選ぶと、その日の便をあとから登録できます（登録後、記録と終了時刻を入れる画面に進みます）。</p>
         <label>開始時刻<input type="time" name="start" value="${Fmt.inputTime()}" required></label>
         <label>目標の終了時刻（任意）<input type="time" name="target"></label>
         <label>荷物の個数<input type="number" name="pkg" min="0" inputmode="numeric" placeholder="例：120"></label>
@@ -2283,6 +2285,12 @@ const FORM = {
     if (fd.get("pkg") !== "") s.snapshots.push({ id: uid(), time: iso(start), packages: +fd.get("pkg"), destinations: num(fd.get("dest")) ?? Math.round(+fd.get("pkg") * 0.7), locations: num(fd.get("loc")) ?? 0, breakMinutes: 0 });
     if (S._pendingOcr) { const p = S._pendingOcr; S._pendingOcr = null; if (!s.snapshots.length && p.packages != null) s.snapshots.push({ id: uid(), time: iso(p.time || start), packages: p.packages, destinations: p.destinations ?? p.undelivered ?? 0, locations: p.locations ?? 0, completed: p.completed ?? null, breakMinutes: 0 }); if (p.bags && p.bags.length) s.bags = p.bags; }
     mutate((d) => d.sessions.push(s));
+    if (!sameDay(day, new Date())) {
+      // 過去の日の便：その便の画面を開いて、記録と終了時刻を入れてもらう
+      S.route = { tab: "history", page: "session", id: s.id }; render();
+      toast(`${Fmt.day(day)}の${S.trip}便を登録しました。記録と終了時刻を入れてください`);
+      return;
+    }
     toast(`${S.trip}便を開始しました`);
   },
   snap(fd, form) {
@@ -2466,7 +2474,7 @@ document.addEventListener("DOMContentLoaded", boot);
 setInterval(() => { if (S.mode === "app" && !S.modal && S.route.tab === "today" && !document.activeElement.matches("input,textarea,select")) render(); }, 60000);
 
 </script>
-<script src="dcr.js?v=202611191140"></script>
-<script src="fuel.js?v=202611191140"></script>
+<script src="dcr.js?v=202611220148"></script>
+<script src="fuel.js?v=202611220148"></script>
 </body>
 </html>
