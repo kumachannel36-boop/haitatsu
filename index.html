@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-HbwtJU7SEwg29vyL4Vv8y7P5C0nUvI1titN5J07Iv64=' https://cdn.jsdelivr.net blob: 'wasm-unsafe-eval' 'unsafe-eval'; worker-src 'self' blob:; connect-src 'self' https://bhznwbncnzlnpbieetah.supabase.co https://cdn.jsdelivr.net https://tessdata.projectnaptha.com blob: data:; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'self'; manifest-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-3gN//jyRr0Qtn4mBClfJzxhkS5xmFPS5sA7yJfrDZi4=' https://cdn.jsdelivr.net blob: 'wasm-unsafe-eval' 'unsafe-eval'; worker-src 'self' blob:; connect-src 'self' https://bhznwbncnzlnpbieetah.supabase.co https://cdn.jsdelivr.net https://tessdata.projectnaptha.com blob: data:; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'self'; manifest-src 'self'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#127686">
@@ -1016,16 +1016,21 @@ const OCR = {
   packageCounts(lines) {
     let bulk = null, standard = null, plain = null;
     lines.forEach((line, i) => {
-      const next = lines[i + 1] || "";
       for (const m of line.matchAll(/([0-9]+)\s*個の荷物/g)) {
         const v = +m[1];
-        if ((line + " " + next).includes("バルク") && !line.includes("標準")) bulk = (bulk || 0) + v;
-        else if (line.includes("標準") || /^-?\s*標準/.test(next)) standard = (standard || 0) + v;
+        // 種類はまず同じ行で判断。次の行は「- バルク停止」「- 標準」だけが分かれた時だけ見る
+        let kind = line.includes("バルク") ? "bulk" : line.includes("標準") ? "standard" : "";
+        const next = (lines[i + 1] || "").trim();
+        if (!kind && next && !next.includes("個の荷物") && /^(-|バルク|標準)/.test(next)) kind = next.includes("バルク") ? "bulk" : next.includes("標準") ? "standard" : "";
+        if (kind === "bulk") bulk = (bulk || 0) + v;
+        else if (kind === "standard") standard = (standard || 0) + v;
         else if (plain == null) plain = v;
       }
     });
     if (bulk == null && standard == null) return { packages: plain, bulk: null, standard: null };
     const st = standard ?? plain;
+    // バルクだけ読めて標準が読めない時は合計不明（バルク0で「全部終わった」と勘違いしないように）
+    if (st == null && !bulk) return { packages: null, bulk, standard: null };
     return { packages: (bulk || 0) + (st || 0), bulk, standard: st };
   },
   colors: ["オレンジ", "ピンク", "グレー", "ネイビー", "ベージュ", "水色", "黄緑", "黒", "緑", "青", "黄", "紫", "赤", "白", "灰", "茶"],
@@ -1481,6 +1486,17 @@ function remainingCard(s, f) {
   return card("残り", "📦", `<div class="minis">${mini("荷物", f.remainingPkg + "個", "or")}${mini("目的地", f.remainingDest + "件")}${mini("ロケーション", (l.locations || 0) + "件")}${mini("配達済み", A.delivered(s) + "個", "g")}${mini("次の目的地", "#" + f.nextStop)}${mini("最終記録", Fmt.hm(l.time))}</div>
     <p class="small b g">売上の目安：配達済み ${yenOf(A.delivered(s))}／全部で ${yenOf(A.initial(s))}（1個${up}円）</p>${fp ? `<p class="muted small">フォローに渡した荷物 ${fp}個は、最初の数から除いています。</p>` : ""}`);
 }
+/* 数字の入力欄をタップした時、「0」だけが入っていたら消して、すぐ数字を打てるようにする */
+document.addEventListener("focusin", (e) => {
+  const el = e.target;
+  if (el && el.tagName === "INPUT" && (el.type === "number" || el.hasAttribute("data-sc") || el.inputMode === "numeric") && el.value.trim() === "0") {
+    el.dataset.wasZero = "1"; el.value = "";
+  }
+});
+document.addEventListener("focusout", (e) => {
+  const el = e.target;
+  if (el && el.dataset && el.dataset.wasZero) { delete el.dataset.wasZero; if (el.value.trim() === "") el.value = "0"; }
+});
 /* ---------- 売上の目安（1個あたりの単価） ---------- */
 function unitPrice() { const v = Math.round(+((S.data && S.data.settings && S.data.settings.unitPrice) || 100)); return v > 0 && v <= 10000 ? v : 100; }
 function yenOf(n) { return "¥" + Math.round((n || 0) * unitPrice()).toLocaleString("ja-JP"); }
@@ -2402,8 +2418,10 @@ async function readShots(files) {
     for (const b of p.bags) if (!r.bags.some((x) => OCR.bagKey(x) === OCR.bagKey(b))) r.bags.push(b);
   }
   // バルクと標準が別々のスクショに写っていても、合計を荷物の数にする
-  if (r.bulk != null || r.standard != null) { r.standard = r.standard ?? plain; r.packages = (r.bulk || 0) + (r.standard || 0); } else r.packages = plain;
+  if (r.bulk != null || r.standard != null) { r.standard = r.standard ?? plain; r.packages = r.standard == null && !r.bulk ? null : (r.bulk || 0) + (r.standard || 0); } else r.packages = plain;
   if (r.destinations == null && r.undelivered != null) r.destinations = r.undelivered;
+  // 目的地が残っているのに荷物0個はありえないので、読み間違いとして使わない
+  if (r.packages === 0 && (r.destinations || 0) > 0) r.packages = null;
   const parts = [];
   if (r.packages != null) parts.push("荷物" + r.packages + (r.bulk ? `（バルク${r.bulk}＋標準${r.standard || 0}）` : "")); if (r.destinations != null) parts.push("目的地" + r.destinations); if (r.locations != null) parts.push("ロケーション" + r.locations); if (r.bags.length) parts.push("バッグ" + r.bags.length + "件");
   r.summary = parts.length ? "読み取り結果：" + parts.join("・") + "（違っていたら直してください）" : "数字を読み取れませんでした。手入力してください。";
@@ -2474,7 +2492,7 @@ document.addEventListener("DOMContentLoaded", boot);
 setInterval(() => { if (S.mode === "app" && !S.modal && S.route.tab === "today" && !document.activeElement.matches("input,textarea,select")) render(); }, 60000);
 
 </script>
-<script src="dcr.js?v=202611220148"></script>
-<script src="fuel.js?v=202611220148"></script>
+<script src="dcr.js?v=202611222256"></script>
+<script src="fuel.js?v=202611222256"></script>
 </body>
 </html>

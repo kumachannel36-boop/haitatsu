@@ -82,14 +82,14 @@ const DCRM = (() => {
   const RULE_START = "2026-09-06";
   const SF = [
     { k: "mentor", label: "Mentorスコア", unit: "点", rule: "800未満で −10点", ph: "例 848", int: false },
-    { k: "dnr", label: "DNR問い合わせ", unit: "件", rule: "1件 −25点（回収できた場合も1件）", ph: "0", int: true, mul: "-25" },
+    { k: "dnr", label: "DNR問い合わせ", unit: "件", rule: "1件 −25点（回収できた場合も1件）", ph: "件数", int: true, mul: "-25" },
     { k: "returnRate", label: "持ち戻り率", unit: "％", rule: "入力値 × −50点（0.48 → 0.48％）", ph: "例 0.48", int: false, mul: "-50" },
-    { k: "late", label: "遅刻・早退", unit: "回", rule: "1回 −15点", ph: "0", int: true, mul: "-15" },
-    { k: "accident", label: "欠車・事故", unit: "件", rule: "1件 −100点", ph: "0", int: true, mul: "-100" },
-    { k: "workDays", label: "稼働日数", unit: "日", rule: "1日 ＋2.5点（対象月の数字）", ph: "0", int: true, mul: "2.5" },
-    { k: "requestedOff", label: "希望休数", unit: "日", rule: "1日 −2.5点（対象月の数字）", ph: "0", int: true, mul: "-2.5" },
-    { k: "follow", label: "フォロー", unit: "回", rule: "1回 ＋10点", ph: "0", int: true, mul: "10" },
-    { k: "morningAbsent", label: "朝礼欠席", unit: "回", rule: "1回 −10点", ph: "0", int: true, mul: "-10" }
+    { k: "late", label: "遅刻・早退", unit: "回", rule: "1回 −15点", ph: "回数", int: true, mul: "-15" },
+    { k: "accident", label: "欠車・事故", unit: "件", rule: "1件 −100点", ph: "件数", int: true, mul: "-100" },
+    { k: "workDays", label: "稼働日数", unit: "日", rule: "1日 ＋2.5点（対象月の数字）", ph: "日数", int: true, mul: "2.5" },
+    { k: "requestedOff", label: "希望休数", unit: "日", rule: "1日 −2.5点（対象月の数字）", ph: "日数", int: true, mul: "-2.5" },
+    { k: "follow", label: "フォロー", unit: "回", rule: "1回 ＋10点", ph: "回数", int: true, mul: "10" },
+    { k: "morningAbsent", label: "朝礼欠席", unit: "回", rule: "1回 −10点", ph: "回数", int: true, mul: "-10" }
   ];
   const decParse = (str) => { const neg = str.startsWith("-"); const t = neg ? str.slice(1) : str; const [a, b = ""] = t.split("."); const v = BigInt((a || "0") + b); return { n: neg ? -v : v, s: b.length }; };
   const decMul = (x, y) => ({ n: x.n * y.n, s: x.s + y.s });
@@ -311,7 +311,7 @@ const DCRM = (() => {
       const cc = a["c" + c];
       return `<fieldset class="span2"><legend><b style="color:${c === 1 ? C1 : C2}">C${c}</b>${cc && cc.planned ? `　DCR ${pct(c === 1 ? cc.dcr : a.c2dcr)}${c === 2 ? "（C1＋C2合算）" : ""}` : ""}</legend><div class="grid2">
         <label>配達予定数<input type="number" name="c${c}_planned" min="0" inputmode="numeric" value="${esc(r.planned)}" placeholder="0"></label>
-        ${REASONS.map((x) => `<label>${x.label}<small> ${x.desc}</small><input type="number" name="c${c}_${x.k}" min="0" inputmode="numeric" value="${esc(r[x.k] || 0)}"></label>`).join("")}</div></fieldset>`;
+        ${REASONS.map((x) => `<label>${x.label}<small> ${x.desc}</small><input type="number" name="c${c}_${x.k}" min="0" inputmode="numeric" value="${r[x.k] ? esc(r[x.k]) : ""}" placeholder="0"></label>`).join("")}</div></fieldset>`;
     };
     return sheet(`${d.getMonth() + 1}月${d.getDate()}日（${DOW[d.getDay()]}）の実績`, `<form data-form="dcrDay" data-date="${date}" class="grid2">
       ${block(1)}${block(2)}
